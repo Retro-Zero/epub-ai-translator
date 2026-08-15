@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+data/
+test-epubs/
+backend/.env
+.DS_Store
+node_modules/
+.pytest_cache/
+*.log
+dist/
+*.egg-info/
