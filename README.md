@@ -1,153 +1,374 @@
 # مترجم هوشمند EPUB
 
-**🌐 زبانها:** فارسی · [English](README.en.md)
+**🌐 زبان‌ها:** فارسی · [English](README.en.md)
 
-یه وب‌اپ self-hosted که کتاب‌های EPUB انگلیسی رو به فارسی تبدیل می‌کنه — با یک
-human-in-the-loop واقعی توی هر مرحله‌ای که اهمیت داره. کتاب رو آپلود می‌کنید،
-glossary اسم‌هاش و اصطلاحاتش رو تایید می‌کنید، progress ترجمه‌ی فصل‌به‌فصل رو
-زنده می‌بینید، مشکلاتی که AI flag کرده رو بررسی می‌کنید و آخرش یه EPUB فارسی
-RTL تمیز دانلود می‌کنید — با همون structure، تصویرها، CSS و فهرست اصلی.
+یک وب‌اپ **self-hosted** برای ترجمه‌ی کتاب‌های EPUB انگلیسی به فارسی، با یک **human-in-the-loop** واقعی در مراحل مهم.
 
-تک‌کاربره، کاملاً روی خودِ سیستم شما اجرا می‌شه، نه اکانتی نه ابری. کلید API
-رو خود‌تون می‌ذارید (BYOK) — فقط بابت tokenهایی که واقعاً مصرف می‌شن به
-provider پول می‌دید.
+کتاب را آپلود می‌کنید، ساختارش را قبل از شروع می‌بینید، Glossary اسم‌ها و اصطلاحات را بررسی و تأیید می‌کنید، ترجمه را فصل‌به‌فصل با progress زنده دنبال می‌کنید، خروجی را در مرحله‌ی QA بررسی می‌کنید و در نهایت یک EPUB فارسی RTL تحویل می‌گیرید.
 
-## چیکار می‌کنه
+ساختار اصلی کتاب، تصاویر، CSS و فهرست آن حفظ می‌شوند.
 
-1. **آپلود** — یه `.epub` بندازید؛ همون لحظه title، حجم و تعداد فصل‌ها رو
-   می‌بینید، *قبل از* اینکه چیزی ساخته ب‌شه.
-2. **Provider** — DeepSeek، OpenAI، Gemini یا هر endpoint سازگار با
-   OpenAI (مثل Ollama یا Groq). کلید توی یه فایل کانفیگ محلی روی همون
-   دستگاه می‌مونه و هیچ‌جا دیگه‌ای فرستاده نمی‌شه.
-3. **Glossary** — اسم‌های کتاب و اصطلاحات ‌تکراریش از اولین فصلِ محتوایی
-   استخراج می‌شه؛ فرم فارسی پیشنهادی رو ویرایش می‌کنید و approve می‌زنید.
-   از اون به بعد همه‌ی ترجمه‌ها این اسم‌ها رو به‌عنوان ترجمه‌ی ثابت و
-   اجباری در نظر می‌گیرن.
-4. **ترجمه** — صف ترجمه‌ی کل کتاب در پس‌زمینه با وضعیت زنده‌ی هر فصل.
-   خرابی‌ها همیشه‌ محدود به همون فصلن: یه فصل failed هیچ‌وقت بقیه‌ی کتاب رو
-   بلاک نمی‌کنه و جداگانه retry می‌شه.
-5. **بازبینی QA** — یه بررسی اختیاری روی نمونه‌ای از ترجمه‌ها
-   (glossary / معنا / روانی / لحن) با متن اصلی و ترجمه‌ی فعلی کنار هم،
-   پیشنهاد اصلاح قابل ویرایش، و accept یا keep برای هر مورد.
-6. **Finalize** — اصلاحات تایید‌شده اعمال می‌شه، `lang="fa"` و `dir="rtl"`
-   روی همه‌ی فصل‌ها ست می‌شه، فونت وزیر‌متن (SIL OFL 1.1، به‌همراه لایسنس‌ش)
-   داخل کتاب embed می‌شه، فهرست و عنوان ترجمه می‌شه و EPUB نهایی آماده‌ی
-   دانلود می‌شه.
+> **کاملاً local و تک‌کاربره:** بدون account، بدون cloud و بدون database.
+> **BYOK:** API key خودتان را استفاده می‌کنید و فقط هزینه‌ی tokenهای مصرف‌شده را به provider می‌پردازید.
 
-هزینه ‌همیشه جلوی چشمته: tokenهای مصرفی هر job، هزینه‌ی تخمینی بر اساس
-قیمت provider (جدول داخلی، قابل ویرایش در settings) و تخمین باقیمانده وسط
-کار.
+---
 
-## تکنولوژی
+## ✨ قابلیت‌ها
 
-- **بک‌اند** — Python 3.11، FastAPI، ebooklib (مدل OPF/spine)،
-  BeautifulSoup + lxml (DOM فایل‌های XHTML)، zip surgery با کتابخونه‌ی
-  استاندارد
-- **فرانت‌اند** — React 18 + Vite (فقط functional components و hooks، CSS
-  مینیمال، وضعیت با polling — نه websocket نه فریمورک UI)
-- **ذخیره‌سازی** —  محلی `data/jobs/<job_id>/`، بدون دیتابیس
-- **ترجمه** — هر API سازگار با OpenAI از طریق SDK کتابخونهی `openai`
-  (پیش‌تنظیم DeepSeek برای `deepseek-v4-flash` تنظیم شده: thinking خاموش،
-  batching آگاه از rate limit، بازیابی پاسخهای خالی)
+### ۱. آپلود و بررسی EPUB
 
-## نصب و اجرا
+فایل `.epub` را آپلود کنید و قبل از اینکه چیزی ساخته یا ترجمه شود، اطلاعات اولیه‌ی کتاب را ببینید:
 
-به Python 3.10+ (پیشنهاد 3.11) و Node 18+ برای build فرانت‌اند نیاز دارید.
+* عنوان
+* حجم فایل
+* تعداد فصل‌ها
+* تعداد content nodeها
+
+### ۲. اتصال به Provider دلخواه
+
+می‌توانید از این providerها استفاده کنید:
+
+* DeepSeek
+* OpenAI
+* Gemini
+* هر endpoint سازگار با OpenAI، مثل Ollama یا Groq
+
+API key به‌صورت local روی دستگاه شما ذخیره می‌شود و به هیچ سرویس دیگری ارسال نمی‌شود.
+
+قبل از شروع ترجمه هم می‌توانید با یک درخواست ارزان، اتصال و API key را تست کنید.
+
+### ۳. Glossary با تأیید کاربر
+
+اسم شخصیت‌ها و اصطلاحات تکرارشونده از اولین فصل محتوایی استخراج می‌شوند.
+
+AI برای هر مورد یک ترجمه‌ی فارسی پیشنهاد می‌دهد و شما می‌توانید:
+
+* ترجمه را تغییر دهید
+* یادداشت اضافه کنید
+* مورد را تأیید کنید
+
+بعد از تأیید، این موارد به‌عنوان ترجمه‌های **ثابت و اجباری** در تمام ترجمه‌های کتاب استفاده می‌شوند.
+
+### ۴. ترجمه‌ی فصل‌به‌فصل
+
+ترجمه‌ی کل کتاب در پس‌زمینه انجام می‌شود و progress هر فصل به‌صورت زنده نمایش داده می‌شود.
+
+اگر یک فصل fail شود:
+
+* بقیه‌ی کتاب متوقف نمی‌شود
+* مشکل همان فصل باقی می‌ماند
+* امکان retry همان فصل وجود دارد
+
+Batchها هم با محدودیت concurrency و rate limit اجرا می‌شوند.
+
+### ۵. بازبینی QA
+
+یک مرحله‌ی اختیاری برای بررسی کیفیت و consistency ترجمه وجود دارد.
+
+نمونه‌ای از ترجمه‌ها از نظر موارد زیر بررسی می‌شوند:
+
+* استفاده از Glossary
+* انتقال معنا
+* روان بودن فارسی
+* لحن
+
+متن اصلی و ترجمه کنار هم نمایش داده می‌شوند و برای مشکلات پیدا‌شده، پیشنهاد اصلاح قابل ویرایش ارائه می‌شود.
+
+در نهایت می‌توانید هر پیشنهاد را **Accept** یا **Keep** کنید.
+
+### ۶. Finalize
+
+در مرحله‌ی نهایی:
+
+* اصلاحات تأییدشده اعمال می‌شوند
+* `lang="fa"` و `dir="rtl"` تنظیم می‌شوند
+* فونت **Vazirmatn** داخل EPUB embed می‌شود
+* لایسنس SIL OFL 1.1 فونت نیز همراه کتاب قرار می‌گیرد
+* عنوان و TOC ترجمه می‌شوند
+* EPUB نهایی آماده‌ی دانلود می‌شود
+
+ساختار اصلی کتاب، تصاویر، CSS و TOC حفظ می‌شوند.
+
+---
+
+## 💰 هزینه‌ی ترجمه
+
+هزینه‌ی مصرف‌شده در هر job داخل برنامه نمایش داده می‌شود.
+
+همچنین می‌توانید:
+
+* tokenهای مصرف‌شده را ببینید
+* هزینه‌ی تخمینی را بر اساس قیمت provider مشاهده کنید
+* هزینه‌ی احتمالی باقی‌مانده را حین ترجمه ببینید
+* قیمت input/output هر provider را در Settings تغییر دهید
+
+---
+
+## 🛡️ Round-trip Fidelity Gate
+
+قبل از اینکه ترجمه به محتوای کتاب دست بزند، EPUB یک **round-trip verification** کامل را پشت سر می‌گذارد.
+
+EPUB بازسازی‌شده باید از نظر ساختار و محتوای دست‌نخورده، با فایل اصلی مطابقت داشته باشد.
+
+این Gate موارد زیر را بررسی می‌کند:
+
+* ترتیب ورودی‌های ZIP یکسان باشد
+* فایل‌های دست‌نخورده مثل CSS، تصاویر، فونت، OPF، NCX و TOC دقیقاً یکسان باشند
+* `mimetype` همچنان `stored` باشد و deflate نشده باشد
+* تمام فصل‌های بازسازی‌شده XML معتبر داشته باشند
+* متن ساده‌ی هر فصل قبل و بعد از rebuild یکسان باشد (با نرمال‌سازی whitespace)
+
+برای هر job یک `report.json` ساخته می‌شود که نتیجه‌ی هر ۵ بررسی را ثبت می‌کند.
+
+اگر هر کدام از این تست‌ها fail شود، job متوقف می‌شود.
+
+---
+
+## 🧠 مقاومت در برابر رفتارهای عجیب مدل
+
+مدل‌های زبانی همیشه دقیقاً همان چیزی را که انتظار داریم برنمی‌گردانند.
+
+Translator برای بعضی از خطاهای رایج recovery دارد؛ مثلاً وقتی مدل:
+
+* برای یک node پاسخ خالی برمی‌گرداند
+* بعضی آیتم‌های یک batch را جا می‌اندازد
+* پاسخ ناقص برمی‌گرداند
+
+در این شرایط، nodeهای مشکل‌دار می‌توانند متن اصلی خودشان را حفظ کنند و ترجمه‌ی فصل ادامه پیدا کند، به‌جای اینکه کل کتاب fail شود.
+
+---
+
+## 🧰 تکنولوژی
+
+### Backend
+
+* Python 3.11
+* FastAPI
+* ebooklib
+* BeautifulSoup
+* lxml
+* ZIP manipulation با standard library
+
+### Frontend
+
+* React 18
+* Vite
+* Functional Components + Hooks
+* CSS مینیمال
+* Polling برای وضعیت job
+* بدون WebSocket
+* بدون UI framework
+
+### Storage
+
+تمام داده‌ها local ذخیره می‌شوند:
+
+```text
+data/jobs/<job_id>/
+```
+
+هیچ databaseای استفاده نمی‌شود.
+
+### Translation
+
+ترجمه از طریق SDK کتابخانه‌ی `openai` انجام می‌شود و با APIهای سازگار با OpenAI کار می‌کند.
+
+Preset فعلی DeepSeek برای `deepseek-v4-flash` تنظیم شده و شامل:
+
+* batching
+* rate-limit awareness
+* concurrency محدود
+* recovery پاسخ‌های خالی
+
+است.
+
+---
+
+## 🚀 نصب و اجرا
+
+### پیش‌نیازها
+
+* Python 3.10+ (پیشنهاد: 3.11)
+* Node.js 18+
+
+### ۱. نصب Backend
 
 ```bash
-# 1. بک‌اند
 uv venv --python 3.11
 uv pip install --python .venv/bin/python -r backend/requirements.txt
-cp backend/.env.example backend/.env    # اختیاری: fallback کلید از env
-
-# 2. فرانت‌اند (یه بار build می‌شه؛ خروجی میره توی backend/static)
-cd frontend && npm install && npm run build && cd ..
-
-# 3. اجرا
-cd backend && ../.venv/bin/uvicorn app.main:app --port 8000
+cp backend/.env.example backend/.env
 ```
 
-مرورگر رو ببرید http://127.0.0.1:8000 — توی صفحه‌ی settings X‌X، مدل و
-کلید‌تون رو می‌ذارید (یا از fallback متغیر `DEEPSEEK_API_KEY` استفاده کنید) و
-دکمه‌ی «Test connection» با یه درخواست ارزون کلید رو قبل از شروع کتاب
-چک می‌کنه.
+فایل `.env` اختیاری است و می‌توانید از آن برای fallback API key استفاده کنید.
 
-حالت توسعه‌ی فرانت‌اند (hot reload، پراکسی API به :8000):
-`cd frontend && npm run dev`.
-
-## پیکربندی BYOK
-
-| فیلد | توضیح |
-|---|---|
-| Provider | DeepSeek / OpenAI / Gemini / Custom (base URL سازگار با OpenAI) |
-| مدل | انتخابگر per-provider (DeepSeek V4 flash، GPT-4o mini، Gemini 2.5 flash و…) یا متن آزاد برای custom |
-| کلید API | توی `data/settings.json` روی دستگاه شما (gitignored، chmod 600)، توی UI ماسک می‌شه و API هیچ‌وقت کامل بر‌نمی‌گردون‌ش |
-| قیمت | نرخ input/output به‌ازای هر ۱ میلیون token برای تخمین هزینه — جدول داخلی، قابل ویرایش |
-
-## API
-
-| Method | مسیر | توضیح |
-|---|---|---|
-| POST | `/preview` | پارس EPUB بدون ساخت job → عنوان، تعداد فصل، تعداد node |
-| POST | `/upload` | آپلود `file` (.epub) → `{job_id, report}`؛ استخراج + بازسازی + راستی‌آزمایی |
-| GET | `/jobs/{id}` / `/jobs/{id}/status` | اطلاعات کتاب / وضعیت زنده‌ی فصل‌ها + مصرف + هزینه |
-| POST | `/glossary/{id}/extract` | پیشنهاد اصطلاحات از اولین فصل محتوایی |
-| PATCH | `/glossary/{id}` | ویرایش/تایید glossary با `{glossary: [{original, persian, category, note}]}` |
-| POST | `/translate/{id}/chapter/{ch}` | ترجمهی یک فصل (با glossary تایید‌شده) |
-| POST | `/translate/{id}/all` | ترجمهی کل کتاب در پس‌زمینه؛ فصل‌های done رد می‌شن |
-| POST | `/qa/{id}` · GET `/qa/{id}` · PUT `/qa/{id}/fixes` | اجرا / خواندن / اعمال بازبینی QA |
-| POST | `/finalize/{id}` | اصلاحات QA + متادیتا‌ی RTL + فونت + ترجمهی TOC/عنوان → `final.epub` |
-| GET | `/download/{id}` | final → translated → rebuilt، به همین ترتیب اولویت |
-| GET | `/settings` · PUT · POST `/settings/test` | ذخیره‌ی BYOK (ماسکشده) + تست اتصال |
-| GET | `/health` | liveness |
-
-## راستی‌آزمایی (GATE)
-
-هر آپلود قبل از اینکه ترجمه به چیزی دست بزنه یه round-trip کامل اجرا می‌کنه:
-EPUB بازسازی‌شده باید دقیقاً مثل نسخه‌ی اصلی رندر ب‌شه —
-
-- فهرست ورودی‌های zip یکسان (با ترتیب)
-- همه‌ی ورودی‌های دست‌نخورده (CSS، تصویر، فونت، OPF، NCX، TOC) بایت‌به‌بایت یکسان
-- `mimetype` هنوز stored باشه نه deflated (مطابق spec)
-- هر فصل بازسازی‌شده XML خوش‌ساخت باشه
-- متن ساده‌ی استخراج‌شده فصل‌به‌فصل یکسان (با نرمال‌سازی whitespace)
-
-هر job یک `report.json` داره که هر ۵ تا چک رو ثبت می‌کنه؛ شکست هر کدوم یعنی
-شکست همون job.
-
-## تست
+### ۲. Build کردن Frontend
 
 ```bash
-.venv/bin/python -m pytest        # ۶۶ تست: round-trip، مترجم، glossary،
-                                  # QA، finalize، settings، preview
+cd frontend
+npm install
+npm run build
+cd ..
 ```
 
-epubهای واقعی رو ب‌ندازید توی `test-epubs/` (gitignored) — خودکار به‌عنوان
-fixtureهای round-trip استفاده می‌شن. `backend/demo.py book.epub` هم از CLI
-روی هر فایلی اجرا‌ش می‌کنه.
+خروجی build داخل `backend/static` قرار می‌گیرد.
 
-## ساختار پروژه
+### ۳. اجرای برنامه
 
-```
-backend/app/          اپ FastAPI: parser، textnodes، translator، jobs،
-                      glossary، qa، finalize، settings، verify، rebuild
-backend/static/       فرانت‌اند React ساخته‌شده (سرو‌شده توسط FastAPI)
-backend/assets/       فونت وزیر‌متن + لایسنس OFL (embed در finalize)
-frontend/             سورس React (Vite)
-tests/                ۶۶ تست + سازنده‌ی fixture
-data/jobs/<job_id>/   فایل‌های هر job (gitignored)
+```bash
+cd backend
+../.venv/bin/uvicorn app.main:app --port 8000
 ```
 
-## جاده‌ی پیش رو
+بعد مرورگر را باز کنید:
 
-پولیش خروجی EPUB3 · تایید دوباره‌ی glossary بعد از ویرایشهای میانه‌ی کتاب ·
-workflow CI برای تستها · به‌روزرسانی خودکار قیمت providerها.
+```text
+http://127.0.0.1:8000
+```
 
-## خارج از scope (v1)
+از Settings می‌توانید Provider، مدل و API key را تنظیم کنید.
 
-چند‌زبانه فراتر از EN→FA · اکانت کاربری / multi-tenant · پرداخت ·
-ویرایش گروهی · اپ موبایل.
+قبل از شروع ترجمه، دکمه‌ی **Test connection** یک درخواست ارزان برای بررسی اتصال اجرا می‌کند.
 
-## لایسنس
+### Development mode
 
-MIT — فایل [LICENSE](LICENSE). فونت وزیر‌متن با SIL OFL 1.1.
+برای اجرای Frontend با hot reload:
+
+```bash
+cd frontend
+npm run dev
+```
+
+---
+
+## 🔑 BYOK Configuration
+
+| گزینه        | توضیح                                                       |
+| ------------ | ----------------------------------------------------------- |
+| **Provider** | DeepSeek / OpenAI / Gemini / Custom                         |
+| **Model**    | مدل پیشنهادی برای هر provider یا مقدار دلخواه برای Custom   |
+| **API Key**  | در `data/settings.json` روی دستگاه شما ذخیره می‌شود         |
+| **Pricing**  | نرخ input/output به‌ازای هر ۱ میلیون token برای تخمین هزینه |
+
+API key:
+
+* روی سیستم خودتان باقی می‌ماند
+* در UI به‌صورت mask نمایش داده می‌شود
+* به‌صورت کامل از API برگردانده نمی‌شود
+* فایل تنظیمات با `gitignore` محافظت می‌شود
+* با `chmod 600` محدود می‌شود
+
+---
+
+## 🔌 API
+
+| Method  | Endpoint                       | توضیح                                     |
+| ------- | ------------------------------ | ----------------------------------------- |
+| `POST`  | `/preview`                     | Parse کردن EPUB بدون ساخت job             |
+| `POST`  | `/upload`                      | آپلود EPUB و اجرای rebuild + verification |
+| `GET`   | `/jobs/{id}`                   | اطلاعات job                               |
+| `GET`   | `/jobs/{id}/status`            | وضعیت فصل‌ها، token و هزینه               |
+| `POST`  | `/glossary/{id}/extract`       | استخراج Glossary                          |
+| `PATCH` | `/glossary/{id}`               | ویرایش و تأیید Glossary                   |
+| `POST`  | `/translate/{id}/chapter/{ch}` | ترجمه‌ی یک فصل                            |
+| `POST`  | `/translate/{id}/all`          | ترجمه‌ی کل کتاب                           |
+| `POST`  | `/qa/{id}`                     | اجرای QA                                  |
+| `GET`   | `/qa/{id}`                     | دریافت نتایج QA                           |
+| `PUT`   | `/qa/{id}/fixes`               | اعمال تصمیم‌های QA                        |
+| `POST`  | `/finalize/{id}`               | ساخت EPUB نهایی                           |
+| `GET`   | `/download/{id}`               | دانلود خروجی نهایی                        |
+| `GET`   | `/settings`                    | دریافت تنظیمات                            |
+| `PUT`   | `/settings`                    | ذخیره‌ی تنظیمات                           |
+| `POST`  | `/settings/test`               | تست اتصال به provider                     |
+| `GET`   | `/health`                      | Health check                              |
+
+---
+
+## 🧪 تست
+
+```bash
+.venv/bin/python -m pytest
+```
+
+در حال حاضر **۶۶ تست** وجود دارد که بخش‌هایی مثل این‌ها را پوشش می‌دهند:
+
+* Round-trip verification
+* Translator
+* Glossary
+* QA
+* Finalize
+* Settings
+* Preview
+
+برای استفاده از EPUBهای واقعی به‌عنوان fixture:
+
+```text
+test-epubs/
+```
+
+این پوشه `gitignored` است.
+
+همچنین می‌توانید rebuild را از CLI روی یک EPUB اجرا کنید:
+
+```bash
+python backend/demo.py book.epub
+```
+
+---
+
+## 📁 ساختار پروژه
+
+```text
+backend/
+├── app/
+│   ├── parser
+│   ├── textnodes
+│   ├── translator
+│   ├── jobs
+│   ├── glossary
+│   ├── qa
+│   ├── finalize
+│   ├── settings
+│   ├── verify
+│   └── rebuild
+├── static/          # Frontend build
+└── assets/          # Vazirmatn + OFL license
+
+frontend/             # React + Vite source
+tests/                # 66 tests + fixtures
+
+data/
+└── jobs/<job_id>/    # Job data (gitignored)
+```
+
+---
+
+## 🗺️ Roadmap
+
+* پولیش بیشتر خروجی EPUB3
+* تأیید دوباره‌ی Glossary بعد از تغییرات میانه‌ی کتاب
+* CI workflow برای اجرای خودکار تست‌ها
+* به‌روزرسانی خودکار قیمت providerها
+
+---
+
+## 🚫 خارج از Scope نسخه‌ی فعلی
+
+فعلاً این موارد جزو پروژه نیستند:
+
+* ترجمه‌ی چندزبانه فراتر از EN → FA
+* User accounts
+* Multi-tenancy
+* پرداخت
+* Bulk editing
+* اپلیکیشن موبایل
+
+---
+
+## 📄 License
+
+این پروژه تحت **MIT License** منتشر شده است.
+
+* کد پروژه: MIT
+* فونت Vazirmatn: **SIL Open Font License 1.1**
+
+جزئیات در فایل [LICENSE](LICENSE).
