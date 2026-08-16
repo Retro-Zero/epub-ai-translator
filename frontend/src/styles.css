@@ -70,6 +70,45 @@ body {
   flex: 1;
 }
 
+/* --- page navigation -------------------------------------------------------- */
+
+.nav {
+  display: flex;
+  gap: 2px;
+  background: var(--gray-bg);
+  border-radius: 999px;
+  padding: 3px;
+  margin-left: 6px;
+}
+
+.nav-tab {
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 550;
+  padding: 5px 14px;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.nav-tab:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.nav-tab.active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.nav-tab:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* --- message bar --------------------------------------------------------- */
 
 .message {

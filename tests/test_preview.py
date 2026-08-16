@@ -168,8 +168,9 @@ def test_qa_issues_include_original_and_translation_snippets(monkeypatch):
 
     monkeypatch.setattr("app.translator._make_client", lambda api_key: _QaDeepSeek())
     r = client.post(f"/qa/{job_id}")
-    assert r.status_code == 200, r.text
-    issues = r.json()["chapters"]["ch01"]["issues"]
+    assert r.status_code == 202, r.text
+    body = client.get(f"/qa/{job_id}").json()
+    issues = body["report"]["chapters"]["ch01"]["issues"]
     assert issues, "expected at least one flagged issue"
     it = issues[0]
     assert it["original"] and it["translation"]

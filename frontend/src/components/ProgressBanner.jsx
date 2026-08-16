@@ -1,10 +1,9 @@
 /**
- * Unmissable translation progress: big animated banner + progress bar at the
- * top of the dashboard while a run is active, plus terminal states (all done
- * / finished with failures). The state has to be readable within a second of
- * looking at the screen — no ambiguity about "is it still working?".
+ * Unmissable progress banners at the top of the dashboard: translation runs
+ * AND QA passes. Both render big animated banners with live % and current
+ * item — readable within a second of looking at the screen.
  */
-export default function ProgressBanner({ chapters, running }) {
+export default function ProgressBanner({ chapters, running, qa }) {
   const total = chapters.length;
   const done = chapters.filter((c) => c.status === 'done').length;
   const failed = chapters.filter((c) => c.status === 'failed').length;
@@ -14,6 +13,31 @@ export default function ProgressBanner({ chapters, running }) {
   const pct = total ? Math.round((finished / total) * 100) : 0;
 
   const active = Boolean(running || current);
+
+  // QA pass in flight — top banner must show it, even if translation is idle
+  if (qa?.running) {
+    const qaDone = qa.done || 0;
+    const qaTotal = qa.total || 0;
+    const qaPct = qaTotal ? Math.round((qaDone / qaTotal) * 100) : 0;
+    return (
+      <div className="progress-banner banner-running">
+        <span className="spin" />
+        <div className="progress-main">
+          <div className="progress-line">
+            <strong>
+              {qa.current ? `Running QA — ${qa.current}` : 'Running QA…'}
+            </strong>
+            <span className="muted small">
+              {qaDone} of {qaTotal} chapters checked · {qaPct}%
+            </span>
+          </div>
+          <div className="progress-track">
+            <div className="progress-fill" style={{ width: `${qaPct}%` }} />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!active) {
     if (total > 0 && done + skipped === total) {

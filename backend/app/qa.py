@@ -17,6 +17,10 @@ QA_PROMPT_PATH = Path(__file__).with_name("qa_prompt.txt")
 ISSUE_TYPES = {"glossary_violation", "meaning_drift", "fluency", "tone"}
 SAMPLE_FRACTION = 0.12
 MAX_QA_TOKENS = 8192
+# Same resilience contract as the translator: transient API failures are
+# retried with backoff; only repeated failures record a per-chapter error.
+QA_RETRIES = 1
+API_RETRY_BACKOFF = translator.API_RETRY_BACKOFF
 
 
 class QAError(ValueError):
@@ -59,7 +63,11 @@ def _valid_issue(item) -> dict | None:
     }
 
 
-async def _qa_batch(client, model: str, prompt: str, items: list, glossary: dict | None):
+async def _qa_batch(client, model: str, prompt: str, items: list, glossary: dict | None,
+                    retries: int = QA_RETRIES):
+    """One sampled chapter -> (issues, ignored). Empty responses count as a
+    clean chapter (the model had nothing to flag), not an error. Transient
+    API/parse failures retry with backoff; only repeated failure raises."""
     payload = {
         "items": [
             {"id": it["id"], "original": it["original"], "translation": it["translation"]}
@@ -68,37 +76,57 @@ async def _qa_batch(client, model: str, prompt: str, items: list, glossary: dict
     }
     if glossary:
         payload["glossary"] = glossary
-    resp = await client.chat.completions.create(
-        model=model,
-        max_tokens=MAX_QA_TOKENS,
-        extra_body=translator.extra_body(),
-        messages=[
-            {"role": "system", "content": prompt},
-            {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
-        ],
-    )
-    raw = resp.choices[0].message.content or ""
-    data = _parse_payload(raw)
-    sampled_ids = {it["id"] for it in items}
-    issues = [x for x in (_valid_issue(i) for i in data) if x]
-    ignored = [x for x in issues if x["id"] not in sampled_ids]
-    by_id = {it["id"]: it for it in items}
+    max_attempts = retries + 1
+    last_error = "unknown error"
+    for attempt in range(max_attempts):
+        try:
+            resp = await client.chat.completions.create(
+                model=model,
+                max_tokens=MAX_QA_TOKENS,
+                extra_body=translator.extra_body(),
+                messages=[
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
+                ],
+            )
+        except Exception as e:  # API/transport error — backoff, retry, then loud
+            last_error = f"API error: {e}"
+            if attempt < max_attempts - 1:
+                await asyncio.sleep(API_RETRY_BACKOFF)
+            continue
+        raw = resp.choices[0].message.content or ""
+        if not raw.strip():
+            return [], []  # empty response = chapter clean, NOT an error
+        try:
+            data = _parse_payload(raw)
+        except QAError as e:
+            last_error = str(e)
+            if attempt < max_attempts - 1:
+                await asyncio.sleep(API_RETRY_BACKOFF)
+            continue
+        sampled_ids = {it["id"] for it in items}
+        issues = [x for x in (_valid_issue(i) for i in data) if x]
+        ignored = [x for x in issues if x["id"] not in sampled_ids]
+        by_id = {it["id"]: it for it in items}
 
-    def _with_snippets(issue):
-        src = by_id.get(issue["id"])
-        if src:
-            issue["original"] = src["original"]
-            issue["translation"] = src["translation"]
-        return issue
+        def _with_snippets(issue):
+            src = by_id.get(issue["id"])
+            if src:
+                issue["original"] = src["original"]
+                issue["translation"] = src["translation"]
+            return issue
 
-    return [_with_snippets(x) for x in issues if x["id"] in sampled_ids], [
-        _with_snippets(x) for x in ignored
-    ]
+        return [_with_snippets(x) for x in issues if x["id"] in sampled_ids], [
+            _with_snippets(x) for x in ignored
+        ]
+    raise QAError(f"QA failed after {max_attempts} attempt(s): {last_error}")
 
 
 def run_qa(job_id: str, api_key: str, client=None, model: str | None = None) -> dict:
     """Run QA on every translated chapter's sample. Per-chapter failures are
-    recorded, not fatal — the rest of the report still stands."""
+    recorded, not fatal — the rest of the report still stands. Progress is
+    written to qa_progress.json after each chapter so the UI banner can show
+    "Running QA — chapter X of N" and survive reloads."""
     from . import jobs
 
     model = model or translator.current_model()
@@ -108,9 +136,22 @@ def run_qa(job_id: str, api_key: str, client=None, model: str | None = None) -> 
     if client is None:
         client = translator._make_client(api_key)
 
+    def _progress(running: bool, current: str | None = None, done: int = 0, total: int = 0):
+        paths["qa_progress"].write_text(
+            json.dumps(
+                {"running": running, "current": current, "done": done, "total": total},
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+
+    tpaths = sorted(paths["chapters"].glob("*.translated.json"))
+    total = len(tpaths)
+    _progress(True, done=0, total=total)
     report = {"chapters": {}, "total_issues": 0, "ignored_issues": [], "errors": []}
-    for tpath in sorted(paths["chapters"].glob("*.translated.json")):
+    for i, tpath in enumerate(tpaths):
         data = json.loads(tpath.read_text(encoding="utf-8"))
+        _progress(True, current=data["chapter_id"], done=i, total=total)
         sample = sample_nodes(data["text_nodes"])
         if not sample:
             continue
@@ -127,5 +168,6 @@ def run_qa(job_id: str, api_key: str, client=None, model: str | None = None) -> 
         report["total_issues"] += len(issues)
         report["ignored_issues"].extend(ignored)
 
+    _progress(False, done=total, total=total)
     paths["qa_report"].write_text(json.dumps(report, ensure_ascii=False, indent=1), encoding="utf-8")
     return report

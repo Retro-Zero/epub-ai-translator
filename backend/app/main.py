@@ -107,6 +107,8 @@ def put_settings(payload: dict = Body(...)):
 
 @app.post("/settings/test")
 def test_settings(payload: dict = Body(...)):
+    if settings_mod.mock_enabled():
+        return {"ok": True, "models": ["mock"], "via": "mock"}
     cfg = settings_mod.load_settings()
     base_url = str(payload.get("base_url") or "").strip() or cfg.get("base_url", "")
     api_key = str(payload.get("api_key") or "").strip() or cfg.get("api_key", "")
@@ -227,6 +229,7 @@ def job_progress(job_id: str):
         "translated_chapters": _translated_chapters(job_id),
         "translated_epub": paths["translated"].exists(),
         "final_epub": paths["final"].exists(),
+        "qa": _read_json(paths["qa_progress"]) or {"running": False, "done": 0, "total": 0},
         "usage": totals,
         "estimated_cost": round(est_cost, 6),
         "provider_configured": bool(
@@ -252,17 +255,16 @@ def download(job_id: str):
 # --- QA / finalize ---------------------------------------------------------------
 
 
-@app.post("/qa/{job_id}")
-def run_qa(job_id: str):
+@app.post("/qa/{job_id}", status_code=202)
+def run_qa(job_id: str, background_tasks: BackgroundTasks):
     _require_job(job_id)
+    paths = jobs.job_paths(job_id)
+    qa_progress = _read_json(paths["qa_progress"]) or {}
+    if qa_progress.get("running"):
+        raise HTTPException(409, "a QA pass is already running for this job")
     api_key = _api_key()
-    try:
-        report = qa.run_qa(job_id, api_key)
-    except qa.QAError as e:
-        raise HTTPException(502, f"QA failed: {e}") from e
-    except Exception as e:
-        raise HTTPException(502, f"QA failed: {e}") from e
-    return {"job_id": job_id, "status": "qa_done", **report}
+    background_tasks.add_task(qa.run_qa, job_id, api_key)
+    return {"job_id": job_id, "status": "started"}
 
 
 @app.get("/qa/{job_id}")

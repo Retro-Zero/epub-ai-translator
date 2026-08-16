@@ -6,14 +6,29 @@ import UploadScreen from './components/UploadScreen';
 
 const JOB_KEY = 'epub-ai-translator:job';
 
+// Hash-based navigation: #/upload, #/settings, #/dashboard. The back/forward
+// buttons, refresh, and deep links all restore the right screen; ?job=<id>
+// still restores a specific job on top of the dashboard route.
+const SCREENS = ['upload', 'settings', 'dashboard'];
+
+function screenFromHash() {
+  const h = window.location.hash.replace(/^#\/?/, '');
+  return SCREENS.includes(h) ? h : null;
+}
+
+function toHash(screen) {
+  return `#/${screen}`;
+}
+
 /**
- * Three-screen flow: upload (preview, no job created) -> settings (BYOK,
- * only when no provider configured yet) -> dashboard (per-job workspace).
- * The last job id survives in localStorage and ?job=<id> deep-links, so
- * leaving and coming back restores the dashboard instantly.
+ * Three-screen app with a persistent nav bar: upload (preview, no job
+ * created) -> settings (BYOK) -> dashboard (per-job workspace). The last job
+ * id survives in localStorage and ?job=<id> deep-links, so leaving and
+ * coming back restores the dashboard instantly. Navigating between pages is
+ * always one click away in the top nav — no dead ends.
  */
 export default function App() {
-  const [screen, setScreen] = useState('upload'); // upload | settings | dashboard
+  const [screen, setScreen] = useState(() => screenFromHash() || 'upload');
   const [jobId, setJobId] = useState(() => {
     const param = new URLSearchParams(window.location.search).get('job');
     return param || localStorage.getItem(JOB_KEY);
@@ -22,6 +37,21 @@ export default function App() {
   const [pendingFile, setPendingFile] = useState(null); // File chosen, not yet committed
   const [msg, setMsg] = useState(null);
   const [settings, setSettings] = useState(null);
+
+  // keep the address bar in sync with the screen; hashchange handles back/forward
+  useEffect(() => {
+    const wanted = toHash(screen);
+    if (window.location.hash !== wanted) window.location.hash = wanted;
+  }, [screen]);
+
+  useEffect(() => {
+    const onHash = () => {
+      const s = screenFromHash();
+      if (s) setScreen(s);
+    };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
 
   useEffect(() => {
     get('/settings')
@@ -56,6 +86,11 @@ export default function App() {
   const notify = useCallback((text, ok = true) => setMsg({ text, ok }), []);
   const dismiss = () => setMsg(null);
 
+  const go = useCallback((s) => {
+    setScreen(s);
+    if (s === 'upload') window.scrollTo(0, 0);
+  }, []);
+
   const commitUpload = async () => {
     if (!pendingFile) return;
     try {
@@ -84,7 +119,6 @@ export default function App() {
     }
   };
 
-  const goSettings = () => setScreen('settings');
   const leaveSettings = () => {
     if (pendingFile) commitUpload();
     else if (jobId) setScreen('dashboard');
@@ -98,12 +132,34 @@ export default function App() {
     setScreen('upload');
   };
 
+  const navTab = (id, label, active, onClick, disabled) => (
+    <button
+      className={`nav-tab${active ? ' active' : ''}`}
+      onClick={onClick}
+      disabled={disabled}
+      aria-current={active ? 'page' : undefined}
+    >
+      {label}
+    </button>
+  );
+
   return (
     <div className="container">
       <div className="topbar">
         <h1>EPUB AI translator</h1>
-        {jobId && <span className="job-chip">job {jobId}</span>}
+        <nav className="nav" aria-label="pages">
+          {navTab('upload', 'New book', screen === 'upload', () => go('upload'))}
+          {navTab(
+            'dashboard',
+            'Dashboard',
+            screen === 'dashboard',
+            () => jobId && go('dashboard'),
+            !jobId
+          )}
+          {navTab('settings', 'Settings', screen === 'settings', () => go('settings'))}
+        </nav>
         <span className="spacer" />
+        {jobId && <span className="job-chip">job {jobId}</span>}
       </div>
 
       {msg && (
@@ -115,6 +171,8 @@ export default function App() {
 
       {checking ? (
         <div className="loading">restoring your job…</div>
+      ) : screen === 'dashboard' && !jobId ? (
+        <UploadScreen notify={notify} onContinue={handleContinue} />
       ) : screen === 'upload' ? (
         <UploadScreen notify={notify} onContinue={handleContinue} />
       ) : screen === 'settings' ? (
@@ -129,7 +187,7 @@ export default function App() {
           jobId={jobId}
           notify={notify}
           settings={settings}
-          goSettings={goSettings}
+          goSettings={() => go('settings')}
           onNewBook={startNew}
         />
       )}

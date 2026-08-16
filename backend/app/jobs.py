@@ -39,6 +39,7 @@ def job_paths(job_id: str) -> dict:
         "glossary_approved": d / "glossary_approved.json",
         "qa_report": d / "qa_report.json",
         "qa_corrections": d / "qa_corrections.json",
+        "qa_progress": d / "qa_progress.json",
         "final": d / "final.epub",
         "stats": d / "stats.json",
     }

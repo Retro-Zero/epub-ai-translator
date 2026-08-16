@@ -25,6 +25,8 @@ export default function Dashboard({ jobId, notify, settings, goSettings, onNewBo
 
   const chapters = status?.chapters || [];
   const running = Boolean(status?.running);
+  const qaRunning = Boolean(status?.qa?.running);
+  const qa = status?.qa || { running: false, done: 0, total: 0 };
   const title = status?.title || meta?.title || 'Book';
   const model = settings?.model || '';
   const provider = settings?.provider || '';
@@ -76,8 +78,12 @@ export default function Dashboard({ jobId, notify, settings, goSettings, onNewBo
     }
   };
 
-  // live tab title while translating — visible even when the tab is backgrounded
+  // live tab title while translating OR running QA — visible even backgrounded
   useEffect(() => {
+    if (qaRunning) {
+      document.title = `QA — ${qa.current || '…'} (${qa.done}/${qa.total}) · EPUB AI translator`;
+      return;
+    }
     const current = chapters.find((c) => c.status === 'in_progress');
     if (running || current) {
       const d = chapters.filter((c) => c.status === 'done').length;
@@ -85,7 +91,7 @@ export default function Dashboard({ jobId, notify, settings, goSettings, onNewBo
     } else {
       document.title = 'EPUB AI translator';
     }
-  }, [running, chapters]);
+  }, [running, qaRunning, qa, chapters]);
 
   const runQa = () => setRunQaSignal((n) => n + 1);
 
@@ -99,8 +105,8 @@ export default function Dashboard({ jobId, notify, settings, goSettings, onNewBo
       >
         {running ? 'Translating…' : pendingCount === 0 ? 'All chapters done' : 'Translate remaining'}
       </button>
-      <button className="btn btn-secondary" onClick={runQa} disabled={running || !translated}>
-        Run QA pass
+      <button className="btn btn-secondary" onClick={runQa} disabled={running || qaRunning || !translated}>
+        {qaRunning ? 'QA running…' : 'Run QA pass'}
       </button>
       {translated && (
         <a
@@ -148,7 +154,7 @@ export default function Dashboard({ jobId, notify, settings, goSettings, onNewBo
         </div>
       )}
 
-      <ProgressBanner chapters={chapters} running={running} />
+      <ProgressBanner chapters={chapters} running={running} qa={qa} />
 
       <div className="stats-row">
         <div className="stat">
@@ -187,7 +193,14 @@ export default function Dashboard({ jobId, notify, settings, goSettings, onNewBo
             notify={notify}
             action={actionBar}
           />
-          <QaCard jobId={jobId} notify={notify} runSignal={runQaSignal} onRefreshStatus={refresh} />
+          <QaCard
+            jobId={jobId}
+            notify={notify}
+            runSignal={runQaSignal}
+            onRefreshStatus={refresh}
+            qaRunning={qaRunning}
+            finalExists={Boolean(status?.final_epub)}
+          />
         </>
       ) : (
         <div className="loading">loading job state…</div>

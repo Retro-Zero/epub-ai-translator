@@ -26,15 +26,20 @@ FIXTURES = ROOT / "tests" / "fixtures"
 
 
 class FakeCompletions:
-    def __init__(self, mode="translate"):
+    def __init__(self, mode="translate", fail_first=0):
         self.mode = mode
+        self.fail_first = fail_first
         self.calls = 0
 
     async def create(self, **kwargs):
         self.calls += 1
+        if self.calls <= self.fail_first:
+            raise RuntimeError("transient API error")
         content = kwargs["messages"][-1]["content"]
         data = json.loads(content)
         items = data["items"] if isinstance(data, dict) else data
+        if self.mode == "qa_empty":
+            return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=""))])
         if self.mode == "qa":
             issues = []
             if items:
@@ -60,8 +65,8 @@ class FakeCompletions:
 
 
 class FakeDeepSeek:
-    def __init__(self, mode="translate"):
-        self.chat = SimpleNamespace(completions=FakeCompletions(mode=mode))
+    def __init__(self, mode="translate", fail_first=0):
+        self.chat = SimpleNamespace(completions=FakeCompletions(mode=mode, fail_first=fail_first))
 
 
 def _make_translated_job(monkeypatch) -> str:
@@ -99,13 +104,15 @@ def test_sample_nodes_takes_10_to_15_percent():
 # --- QA endpoint ---------------------------------------------------------------
 
 
-def test_qa_endpoint_runs_and_persists_report(monkeypatch):
+def test_qa_endpoint_runs_in_background_and_persists_report(monkeypatch):
     job_id = _make_translated_job(monkeypatch)
     monkeypatch.setattr("app.translator._make_client", lambda api_key: FakeDeepSeek(mode="qa"))
-    r = TestClient(app).post(f"/qa/{job_id}")
-    assert r.status_code == 200, r.text
-    body = r.json()
-    assert body["total_issues"] >= 1
+    client = TestClient(app)
+    r = client.post(f"/qa/{job_id}")
+    assert r.status_code == 202, r.text  # background task, like translate-all
+    # TestClient runs background tasks synchronously — report is ready now
+    body = client.get(f"/qa/{job_id}").json()
+    assert body["report"]["total_issues"] >= 1
     report = json.loads(jobs.job_paths(job_id)["qa_report"].read_text(encoding="utf-8"))
     assert report["chapters"]["ch01"]["sampled"] >= 1
 
@@ -113,9 +120,63 @@ def test_qa_endpoint_runs_and_persists_report(monkeypatch):
 def test_qa_reports_only_translated_chapters(monkeypatch):
     job_id = _make_translated_job(monkeypatch)
     monkeypatch.setattr("app.translator._make_client", lambda api_key: FakeDeepSeek(mode="qa"))
+    client = TestClient(app)
+    client.post(f"/qa/{job_id}")
+    body = client.get(f"/qa/{job_id}").json()
+    assert set(body["report"]["chapters"]) == {"ch01"}  # only the translated one
+
+
+def test_qa_empty_response_treated_as_clean_chapter(monkeypatch):
+    """Bug #3: an empty model response means the chapter is clean — no error."""
+    job_id = _make_translated_job(monkeypatch)
+    monkeypatch.setattr("app.translator._make_client", lambda api_key: FakeDeepSeek(mode="qa_empty"))
+    client = TestClient(app)
+    r = client.post(f"/qa/{job_id}")
+    assert r.status_code == 202, r.text
+    body = client.get(f"/qa/{job_id}").json()
+    assert body["report"]["chapters"]["ch01"]["issues"] == []
+    assert body["report"]["total_issues"] == 0
+    assert body["report"]["errors"] == []  # empty response is NOT an error
+
+
+def test_qa_retries_transient_api_error(monkeypatch):
+    """Bug #3: one transient API failure is retried, not fatal."""
+    monkeypatch.setattr("app.qa.API_RETRY_BACKOFF", 0)  # no real sleep in tests
+    job_id = _make_translated_job(monkeypatch)
+    fake = FakeDeepSeek(mode="qa", fail_first=1)
+    monkeypatch.setattr("app.translator._make_client", lambda api_key: fake)
+    client = TestClient(app)
+    r = client.post(f"/qa/{job_id}")
+    assert r.status_code == 202, r.text
+    assert fake.chat.completions.calls == 2  # first attempt failed, one retry
+    body = client.get(f"/qa/{job_id}").json()
+    assert body["report"]["total_issues"] >= 1
+    assert body["report"]["errors"] == []
+
+
+def test_qa_progress_persisted_and_surfaced_in_status(monkeypatch):
+    """Bug #2: qa_progress.json is written and /status exposes it."""
+    job_id = _make_translated_job(monkeypatch)
+    monkeypatch.setattr("app.translator._make_client", lambda api_key: FakeDeepSeek(mode="qa"))
+    client = TestClient(app)
+    client.post(f"/qa/{job_id}")
+    progress = json.loads(jobs.job_paths(job_id)["qa_progress"].read_text(encoding="utf-8"))
+    assert progress["running"] is False
+    assert progress["done"] == progress["total"] >= 1
+    status = client.get(f"/jobs/{job_id}/status").json()
+    assert status["qa"]["running"] is False
+    assert status["qa"]["total"] >= 1
+    assert status["qa"]["done"] == status["qa"]["total"]
+
+
+def test_qa_rejects_second_run_while_running(monkeypatch):
+    """A QA pass already in flight must reject a second one (409)."""
+    job_id = _make_translated_job(monkeypatch)
+    jobs.job_paths(job_id)["qa_progress"].write_text(
+        json.dumps({"running": True, "done": 0, "total": 1}), encoding="utf-8"
+    )
     r = TestClient(app).post(f"/qa/{job_id}")
-    chapters = r.json()["chapters"]
-    assert set(chapters) == {"ch01"}  # only the translated one
+    assert r.status_code == 409
 
 
 def test_put_qa_fixes_persists_and_validates(monkeypatch):

@@ -29,7 +29,10 @@ export function usePolling(jobId, interval = 2000) {
   }, [refresh]);
 
   const active =
-    !status || status.running || (status.chapters || []).some((c) => c.status === 'in_progress');
+    !status ||
+    status.running ||
+    status.qa?.running ||
+    (status.chapters || []).some((c) => c.status === 'in_progress');
 
   useEffect(() => {
     if (!active) return undefined;

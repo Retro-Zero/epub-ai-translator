@@ -119,8 +119,9 @@ def test_full_mock_book_flow_without_api():
 
     # QA via mock
     r = client.post(f"/qa/{job_id}")
-    assert r.status_code == 200, r.text
-    assert r.json()["total_issues"] >= 1
+    assert r.status_code == 202, r.text
+    body = client.get(f"/qa/{job_id}").json()
+    assert body["report"]["total_issues"] >= 1
 
     # finalize via mock (no API key configured at all)
     r = client.post(f"/finalize/{job_id}", json={"translate_title": True})
