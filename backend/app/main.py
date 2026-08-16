@@ -54,7 +54,10 @@ def _read_json(path: Path):
 
 
 def _api_key() -> str:
-    """BYOK: settings key first, env fallback (existing deployments)."""
+    """BYOK: settings key first, env fallback (existing deployments).
+    Mock/sandbox mode needs no key at all."""
+    if settings_mod.mock_enabled():
+        return ""
     cfg = settings_mod.load_settings()
     key = cfg.get("api_key") or os.environ.get("DEEPSEEK_API_KEY")
     if not key:
@@ -73,6 +76,16 @@ def _require_job(job_id: str) -> None:
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/sample")
+def sample_epub():
+    """The synthetic sample book (generated, safe to redistribute) — one click
+    of cost-free testing in the UI, no upload needed."""
+    path = Path(__file__).resolve().parent.parent / "assets" / "sample-book.epub"
+    if not path.exists():
+        raise HTTPException(404, "sample book not bundled")
+    return FileResponse(path, media_type="application/epub+zip", filename="sample-book.epub")
 
 
 # --- BYOK settings --------------------------------------------------------------
@@ -205,6 +218,7 @@ def job_progress(job_id: str):
         "job_id": job_id,
         "running": bool(progress.get("running")),
         "title": report.get("title", ""),
+        "mock_mode": settings_mod.mock_enabled(),
         "chapters": chapters,
         "glossary": {
             "proposed": _read_json(paths["glossary_proposed"]),

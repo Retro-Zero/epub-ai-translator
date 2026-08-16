@@ -108,6 +108,14 @@ anything: the rebuilt epub must render identically to the original —
 
 `report.json` per job records all five checks; a failing check fails the job.
 
+## Testing for free
+
+Flip on **Mock mode** in Settings and the entire pipeline — glossary, full-book
+translation, QA, finalize, download — runs against an in-process fake: zero
+API calls, zero cost, no key needed. Every output is visibly marked
+(`【آزمایشی】`) so test data is never mistaken for real translations. The
+upload screen also offers the bundled sample book for a one-click test.
+
 ## Tests
 
 ```bash

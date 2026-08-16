@@ -39,9 +39,13 @@ DEFAULTS = {
     "price_in_per_m": None,  # USD per 1M input tokens (user-set; 0/None = no estimate)
     "price_out_per_m": None,
     "disable_thinking": True,
+    "mock_mode": False,  # sandbox: full pipeline with zero API calls
 }
 
-ALLOWED_KEYS = {"provider", "base_url", "model", "api_key", "price_in_per_m", "price_out_per_m"}
+ALLOWED_KEYS = {
+    "provider", "base_url", "model", "api_key", "price_in_per_m", "price_out_per_m",
+    "mock_mode",
+}
 
 
 def _mask(key: str) -> str:
@@ -95,6 +99,12 @@ def save_settings(payload: dict) -> dict:
     return merged
 
 
+def mock_enabled() -> bool:
+    """Sandbox mode: the whole pipeline runs against an in-process fake —
+    zero API calls, zero cost (output clearly marked as test data)."""
+    return bool(load_settings().get("mock_mode"))
+
+
 def public_settings() -> dict:
     s = load_settings()
     key = s.pop("api_key", "")
@@ -103,7 +113,9 @@ def public_settings() -> dict:
         "api_key_present": bool(key),
         "api_key_masked": _mask(key),
         # true when a key is available from any source (settings or env fallback)
-        "provider_configured": bool(key or os.environ.get("DEEPSEEK_API_KEY")),
+        "provider_configured": bool(
+            key or os.environ.get("DEEPSEEK_API_KEY") or mock_enabled()
+        ),
     }
 
 

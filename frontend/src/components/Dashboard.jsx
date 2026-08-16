@@ -133,6 +133,15 @@ export default function Dashboard({ jobId, notify, settings, goSettings, onNewBo
       </div>
 
       {error && <div className="warn">Status refresh failed ({error}) — retrying automatically.</div>}
+      {status?.mock_mode && (
+        <div className="progress-banner banner-running">
+          <span className="spin" />
+          <span>
+            <strong>Mock mode is on</strong> — no real API calls; all output is test data
+            (marked with 【آزمایشی】). Turn it off in settings for real translations.
+          </span>
+        </div>
+      )}
       {status && !status.provider_configured && (
         <div className="warn">
           No AI provider key configured — open settings and save your key before translating.

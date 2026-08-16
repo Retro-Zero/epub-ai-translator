@@ -168,7 +168,7 @@ async def _titles_call(client, model: str, prompt: str, items: list) -> dict:
 def translate_titles(items: list, prompt: str, api_key: str | None = None,
                      client=None, model: str = translator.DEFAULT_MODEL) -> dict:
     if client is None:
-        if not api_key:
+        if not api_key and not translator.settings_mod.mock_enabled():
             raise ValueError("DEEPSEEK_API_KEY is required")
         client = translator._make_client(api_key)
     return asyncio.run(_titles_call(client, model, prompt, items))

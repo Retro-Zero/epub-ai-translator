@@ -100,6 +100,10 @@ def extra_body() -> dict | None:
 
 
 def _make_client(api_key: str | None = None, base_url: str | None = None):
+    if settings_mod.mock_enabled():
+        from .mockai import mock_client
+
+        return mock_client()
     from openai import AsyncOpenAI
 
     cfg = settings_mod.load_settings()
@@ -316,7 +320,7 @@ def translate_chapter(chapter: ChapterData, prompt: str, api_key: str | None = N
     if client is None:
         if not api_key:
             cfg = settings_mod.load_settings()
-            if not (api_key or cfg.get("api_key")):
+            if not (api_key or cfg.get("api_key") or settings_mod.mock_enabled()):
                 raise TranslationError("no API key configured — set one in Settings", [])
         client = _make_client(api_key)
     return asyncio.run(_translate_async(client, model, prompt, chapter, glossary))

@@ -23,6 +23,7 @@ export default function SettingsScreen({ notify, onSaved, onContinue }) {
     api_key: '',
     price_in_per_m: '',
     price_out_per_m: '',
+    mock_mode: false,
   });
   const [present, setPresent] = useState(false);
   const [masked, setMasked] = useState('');
@@ -43,6 +44,7 @@ export default function SettingsScreen({ notify, onSaved, onContinue }) {
           api_key: '',
           price_in_per_m: s.price_in_per_m ?? '',
           price_out_per_m: s.price_out_per_m ?? '',
+          mock_mode: Boolean(s.mock_mode),
         });
       })
       .catch(() => {});
@@ -59,6 +61,7 @@ export default function SettingsScreen({ notify, onSaved, onContinue }) {
         base_url: form.base_url.trim(),
         price_in_per_m: form.price_in_per_m === '' ? null : Number(form.price_in_per_m),
         price_out_per_m: form.price_out_per_m === '' ? null : Number(form.price_out_per_m),
+        mock_mode: Boolean(form.mock_mode),
       };
       if (form.api_key.trim()) body.api_key = form.api_key.trim();
       const saved = await put('/settings', body);
@@ -120,6 +123,21 @@ export default function SettingsScreen({ notify, onSaved, onContinue }) {
         this machine and used only to call {PROVIDER_LABELS[form.provider] || 'your provider'}{' '}
         directly from your own server. It is never sent to or stored by any other service.
       </div>
+
+      <label className="checkbox-row" style={{ marginTop: 14 }}>
+        <input
+          type="checkbox"
+          checked={form.mock_mode}
+          onChange={(e) => setForm((f) => ({ ...f, mock_mode: e.target.checked }))}
+        />
+        <span>
+          <strong>Mock mode</strong> — test the whole flow with zero API calls
+        </span>
+      </label>
+      <p className="small muted" style={{ marginTop: 2 }}>
+        Runs the full pipeline against an in-process fake. No key needed, nothing is charged —
+        but the output is test data, clearly marked.
+      </p>
 
       <label>Provider</label>
       <select value={form.provider} onChange={set('provider')}>

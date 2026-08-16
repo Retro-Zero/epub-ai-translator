@@ -54,6 +54,20 @@ export default function UploadScreen({ notify, providerConfigured, onContinue })
     if (f) setFile(f);
   };
 
+  const loadSample = async () => {
+    setBusy(true);
+    try {
+      const res = await fetch('/sample');
+      if (!res.ok) throw new Error('sample book unavailable');
+      const blob = await res.blob();
+      setFile(new File([blob], 'sample-book.epub', { type: 'application/epub+zip' }));
+    } catch (e) {
+      notify(e.message, false);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const fmtSize = (n) => {
     if (n > 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`;
     return `${Math.max(1, Math.round(n / 1024))} KB`;
@@ -88,6 +102,12 @@ export default function UploadScreen({ notify, providerConfigured, onContinue })
         />
         <p className="dropzone-main">{busy ? 'Reading the epub…' : 'Drop an epub here or click to choose'}</p>
         <p className="muted small">.epub only — nothing is created until you continue</p>
+      </div>
+
+      <div className="form-actions">
+        <button className="btn btn-ghost" onClick={loadSample} disabled={busy}>
+          or try the sample book
+        </button>
       </div>
 
       {preview && (

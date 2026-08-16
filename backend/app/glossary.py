@@ -91,7 +91,7 @@ def extract_glossary(text: str, prompt: str, api_key: str | None = None,
     """
     model = model or translator.current_model()
     if client is None:
-        if not api_key:
+        if not api_key and not translator.settings_mod.mock_enabled():
             raise GlossaryError("DEEPSEEK_API_KEY is required")
         client = translator._make_client(api_key)
     return asyncio.run(_extract_async(client, model, prompt, text))
