@@ -12,7 +12,7 @@ export async function api(path, opts = {}) {
         ? body.detail
         : Array.isArray(body.detail)
           ? body.detail.map((d) => d.msg || String(d)).join('; ')
-          : `HTTP ${res.status}`;
+          : `خطای HTTP ${res.status}`;
     throw new Error(detail);
   }
   return body;

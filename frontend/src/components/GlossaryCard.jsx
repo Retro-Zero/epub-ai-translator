@@ -22,7 +22,7 @@ export default function GlossaryCard({ jobId, glossary, refresh, notify }) {
     setBusy(true);
     try {
       const body = await post(`/glossary/${jobId}/extract`);
-      notify(`proposed ${body.glossary.length} terms from ${body.chapter_used}`);
+      notify(`${body.glossary.length} اصطلاح از فصل ${body.chapter_used} پیشنهاد شد`);
       refresh();
     } catch (e) {
       notify(e.message, false);
@@ -41,7 +41,7 @@ export default function GlossaryCard({ jobId, glossary, refresh, notify }) {
     setBusy(true);
     try {
       await patch(`/glossary/${jobId}`, { glossary: terms });
-      notify('glossary approved — translate remaining is enabled');
+      notify('Glossary تأیید شد — ترجمه‌ی باقی‌مانده فعال شد');
       refresh();
     } catch (e) {
       notify(e.message, false);
@@ -58,12 +58,12 @@ export default function GlossaryCard({ jobId, glossary, refresh, notify }) {
           <div>
             <h2>Glossary</h2>
             <p className="card-sub">
-              <span className="badge badge-done">approved</span> {approved.length} fixed terms
-              applied to every translation call
+              <span className="badge badge-done">تأییدشده</span> {approved.length} اصطلاح ثابت
+              که در همه‌ی ترجمه‌ها اعمال می‌شود
             </p>
           </div>
           <button className="btn btn-ghost" onClick={() => setExpanded((v) => !v)}>
-            {expanded ? 'Collapse' : 'View all'}
+            {expanded ? 'بستن' : 'مشاهده‌ی همه'}
           </button>
         </div>
         <div className="term-chips">
@@ -84,9 +84,9 @@ export default function GlossaryCard({ jobId, glossary, refresh, notify }) {
             <table>
               <thead>
                 <tr>
-                  <th>English</th>
-                  <th>Persian</th>
-                  <th>Category</th>
+                  <th>انگلیسی</th>
+                  <th>فارسی</th>
+                  <th>دسته</th>
                 </tr>
               </thead>
               <tbody>
@@ -110,12 +110,12 @@ export default function GlossaryCard({ jobId, glossary, refresh, notify }) {
       <h2>Glossary</h2>
       <p className="card-sub">
         {proposed.length
-          ? `${proposed.length} terms proposed — edit any, then approve to unlock translation.`
-          : 'Extract recurring names and terms from the first content chapter, then approve them as fixed translations.'}
+          ? `${proposed.length} اصطلاح پیشنهاد شده — هرکدام را ویرایش کنید، سپس با تأیید، ترجمه فعال می‌شود.`
+          : 'اسم‌ها و اصطلاحات تکرارشونده از اولین فصل محتوایی استخراج می‌شوند و بعد از تأیید، به‌عنوان ترجمه‌ی ثابت اعمال می‌شوند.'}
       </p>
       {!proposed.length && (
         <button className="btn btn-secondary" onClick={extract} disabled={busy}>
-          {busy ? 'Extracting…' : 'Extract glossary'}
+          {busy ? 'در حال استخراج…' : 'استخراج Glossary'}
         </button>
       )}
       {proposed.length > 0 && (
@@ -124,10 +124,10 @@ export default function GlossaryCard({ jobId, glossary, refresh, notify }) {
             <table>
               <thead>
                 <tr>
-                  <th>English</th>
-                  <th>Persian (editable)</th>
-                  <th>Category</th>
-                  <th>Note</th>
+                  <th>انگلیسی</th>
+                  <th>فارسی (قابل ویرایش)</th>
+                  <th>دسته</th>
+                  <th>یادداشت</th>
                 </tr>
               </thead>
               <tbody>
@@ -151,7 +151,7 @@ export default function GlossaryCard({ jobId, glossary, refresh, notify }) {
           </div>
           <div className="form-actions">
             <button className="btn btn-secondary" onClick={approve} disabled={busy}>
-              {busy ? 'Approving…' : 'Approve glossary'}
+              {busy ? 'در حال تأیید…' : 'تأیید Glossary'}
             </button>
           </div>
         </>

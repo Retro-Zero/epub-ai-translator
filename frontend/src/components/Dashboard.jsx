@@ -69,7 +69,7 @@ export default function Dashboard({ jobId, notify, settings, goSettings, onNewBo
     setStarting(true);
     try {
       await post(`/translate/${jobId}/all`);
-      notify('translation started — status updates live');
+      notify('ترجمه شروع شد — وضعیت به‌صورت زنده به‌روز می‌شود');
       refresh();
     } catch (e) {
       notify(e.message, false);
@@ -81,15 +81,15 @@ export default function Dashboard({ jobId, notify, settings, goSettings, onNewBo
   // live tab title while translating OR running QA — visible even backgrounded
   useEffect(() => {
     if (qaRunning) {
-      document.title = `QA — ${qa.current || '…'} (${qa.done}/${qa.total}) · EPUB AI translator`;
+      document.title = `QA — ${qa.current || '…'} (${qa.done}/${qa.total}) · مترجم هوشمند EPUB`;
       return;
     }
     const current = chapters.find((c) => c.status === 'in_progress');
     if (running || current) {
       const d = chapters.filter((c) => c.status === 'done').length;
-      document.title = `Translating ${current?.id || '…'} — ${d}/${chapters.length} · EPUB AI translator`;
+      document.title = `در حال ترجمه ${current?.id || '…'} — ${d}/${chapters.length} · مترجم هوشمند EPUB`;
     } else {
-      document.title = 'EPUB AI translator';
+      document.title = 'مترجم هوشمند EPUB';
     }
   }, [running, qaRunning, qa, chapters]);
 
@@ -101,12 +101,12 @@ export default function Dashboard({ jobId, notify, settings, goSettings, onNewBo
         className="btn btn-primary"
         onClick={translateRemaining}
         disabled={running || starting || !approved || pendingCount === 0}
-        title={!approved ? 'approve a glossary first' : undefined}
+        title={!approved ? 'اول Glossary را تأیید کنید' : undefined}
       >
-        {running ? 'Translating…' : pendingCount === 0 ? 'All chapters done' : 'Translate remaining'}
+        {running ? 'در حال ترجمه…' : pendingCount === 0 ? 'همه‌ی فصل‌ها ترجمه شدند' : 'ترجمه‌ی باقی‌مانده'}
       </button>
       <button className="btn btn-secondary" onClick={runQa} disabled={running || qaRunning || !translated}>
-        {qaRunning ? 'QA running…' : 'Run QA pass'}
+        {qaRunning ? 'QA در حال اجرا…' : 'اجرای مرحله‌ی QA'}
       </button>
       {translated && (
         <a
@@ -114,7 +114,7 @@ export default function Dashboard({ jobId, notify, settings, goSettings, onNewBo
           href={`/download/${jobId}`}
           download
         >
-          {complete ? 'Download epub' : 'Download epub (partial)'}
+          {complete ? 'دانلود EPUB' : 'دانلود EPUB (ناقص)'}
         </a>
       )}
     </div>
@@ -131,26 +131,26 @@ export default function Dashboard({ jobId, notify, settings, goSettings, onNewBo
         </div>
         <span className="spacer" />
         <button className="btn btn-ghost" onClick={goSettings}>
-          Settings
+          تنظیمات
         </button>
         <button className="btn btn-ghost" onClick={onNewBook}>
-          New book
+          کتاب جدید
         </button>
       </div>
 
-      {error && <div className="warn">Status refresh failed ({error}) — retrying automatically.</div>}
+      {error && <div className="warn">به‌روزرسانی وضعیت ناموفق بود ({error}) — تلاش دوباره به‌صورت خودکار.</div>}
       {status?.mock_mode && (
         <div className="progress-banner banner-running">
           <span className="spin" />
           <span>
-            <strong>Mock mode is on</strong> — no real API calls; all output is test data
-            (marked with 【آزمایشی】). Turn it off in settings for real translations.
+            <strong>حالت آزمایشی روشن است</strong> — هیچ تماس API واقعی انجام نمی‌شود؛ همه‌ی خروجی‌ها داده‌ی تست
+            (با علامت 【آزمایشی】). برای ترجمه‌ی واقعی در تنظیمات خاموشش کنید.
           </span>
         </div>
       )}
       {status && !status.provider_configured && (
         <div className="warn">
-          No AI provider key configured — open settings and save your key before translating.
+          کلید provider تنظیم نشده — قبل از ترجمه، تنظیمات را باز کنید و کلید را ذخیره کنید.
         </div>
       )}
 
@@ -159,24 +159,24 @@ export default function Dashboard({ jobId, notify, settings, goSettings, onNewBo
       <div className="stats-row">
         <div className="stat">
           <span className="stat-value">{chapters.length || '—'}</span>
-          <span className="stat-label">chapters</span>
+          <span className="stat-label">فصل‌ها</span>
         </div>
         <div className="stat">
           <span className="stat-value">
             {doneCount}
-            {failedCount > 0 && <span className="stat-sub"> +{failedCount} failed</span>}
+            {failedCount > 0 && <span className="stat-sub"> +{failedCount} ناموفق</span>}
           </span>
-          <span className="stat-label">translated</span>
+          <span className="stat-label">ترجمه‌شده</span>
         </div>
         <div className="stat">
           <span className="stat-value">{fmtTokens(tokensUsed)}</span>
-          <span className="stat-label">tokens used</span>
-          {remainingEstimate && <span className="stat-sub">≈ {fmtTokens(remainingEstimate)} left</span>}
+          <span className="stat-label">توکن مصرف‌شده</span>
+          {remainingEstimate && <span className="stat-sub">حدود {fmtTokens(remainingEstimate)} باقی‌مانده</span>}
         </div>
         <div className="stat">
           <span className="stat-value">{fmtUsd(cost)}</span>
           <span className="stat-label">
-            est. cost{rate.source === 'settings' ? ' (your rates)' : rate.source === 'table' ? '' : ' — set rates in settings'}
+            هزینه‌ی تخمینی{rate.source === 'settings' ? ' (نرخ‌های شما)' : rate.source === 'table' ? '' : ' — نرخ‌ها را در تنظیمات تعیین کنید'}
           </span>
         </div>
       </div>
@@ -203,7 +203,7 @@ export default function Dashboard({ jobId, notify, settings, goSettings, onNewBo
           />
         </>
       ) : (
-        <div className="loading">loading job state…</div>
+        <div className="loading">در حال بارگذاری وضعیت job…</div>
       )}
     </div>
   );

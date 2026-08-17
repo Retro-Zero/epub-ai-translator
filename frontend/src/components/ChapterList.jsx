@@ -17,7 +17,7 @@ export default function ChapterList({ jobId, chapters, counts, running, refresh,
     try {
       const body = await post(`/translate/${jobId}/chapter/${id}`);
       notify(
-        `${id}: ${body.report.nodes} nodes translated (${body.report.usage?.calls || 0} calls)`
+        `${id}: ${body.report.nodes} گره ترجمه شد (${body.report.usage?.calls || 0} تماس)`
       );
       refresh();
     } catch (e) {
@@ -30,14 +30,14 @@ export default function ChapterList({ jobId, chapters, counts, running, refresh,
 
   return (
     <div className="card">
-      <h2>Chapters</h2>
+      <h2>فصل‌ها</h2>
       <p className="card-sub">
-        {doneCount} of {chapters.length} translated
+        {doneCount} از {chapters.length} ترجمه شد
         {failedCount > 0 && (
           <>
             {' '}
-            — <span className="badge badge-failed">{failedCount} failed</span> retry them
-            individually; the rest of the book is unaffected
+            — <span className="badge badge-failed">{failedCount} ناموفق</span> آن‌ها را جداگانه دوباره
+            امتحان کنید؛ بقیه‌ی کتاب بی‌تأثیر می‌ماند
           </>
         )}
       </p>
@@ -45,9 +45,9 @@ export default function ChapterList({ jobId, chapters, counts, running, refresh,
       <table>
         <thead>
           <tr>
-            <th>Chapter</th>
-            <th>Nodes</th>
-            <th>Status</th>
+            <th>فصل</th>
+            <th>گره‌ها</th>
+            <th>وضعیت</th>
             <th />
           </tr>
         </thead>
@@ -77,7 +77,7 @@ export default function ChapterList({ jobId, chapters, counts, running, refresh,
                       onClick={() => retry(c.id)}
                       disabled={busyId === c.id}
                     >
-                      {busyId === c.id ? 'translating…' : 'Retry'}
+                      {busyId === c.id ? 'در حال ترجمه…' : 'تلاش دوباره'}
                     </button>
                   )}
                 </td>

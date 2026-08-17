@@ -6,7 +6,7 @@ const PROVIDER_LABELS = {
   deepseek: 'DeepSeek',
   openai: 'OpenAI',
   gemini: 'Gemini',
-  custom: 'Custom endpoint (OpenAI-compatible)',
+  custom: 'پایانه‌ی سفارشی (سازگار با OpenAI)',
 };
 
 /**
@@ -69,7 +69,7 @@ export default function SettingsScreen({ notify, onSaved, onContinue }) {
       setMasked(saved.api_key_masked);
       setForm((f) => ({ ...f, api_key: '' }));
       onSaved?.(saved);
-      notify('settings saved');
+      notify('تنظیمات ذخیره شد');
       if (continueAfter) onContinue?.();
     } catch (e) {
       notify(e.message, false);
@@ -87,7 +87,7 @@ export default function SettingsScreen({ notify, onSaved, onContinue }) {
         api_key: form.api_key.trim() || undefined,
         model: form.model.trim() || undefined,
       });
-      setTestResult({ ok: true, text: `connected — ${(r.models || []).join(', ')}` });
+      setTestResult({ ok: true, text: `اتصال برقرار شد — ${(r.models || []).join(', ')}` });
     } catch (e) {
       setTestResult({ ok: false, text: e.message });
     } finally {
@@ -101,7 +101,7 @@ export default function SettingsScreen({ notify, onSaved, onContinue }) {
       setPresent(false);
       setMasked('');
       onSaved?.(s);
-      notify('saved key removed');
+      notify('کلید ذخیره‌شده حذف شد');
     } catch (e) {
       notify(e.message, false);
     }
@@ -112,16 +112,16 @@ export default function SettingsScreen({ notify, onSaved, onContinue }) {
 
   return (
     <div className="card">
-      <h2>Provider settings</h2>
+      <h2>تنظیمات Provider</h2>
       <p className="card-sub">
-        Choose where translations run and which model does the work. Nothing is charged until you
-        start a translation.
+        انتخاب کنید ترجمه روی کدام سرویس و با کدام مدل اجرا شود. تا وقتی ترجمه را شروع نکنید، هیچ هزینه‌ای
+        پرداخت نمی‌شود.
       </p>
 
       <div className="trust-note">
-        <strong>Your key stays on this device.</strong> It is stored in a local config file on
-        this machine and used only to call {PROVIDER_LABELS[form.provider] || 'your provider'}{' '}
-        directly from your own server. It is never sent to or stored by any other service.
+        <strong>کلید شما روی همین دستگاه می‌ماند.</strong> در یک فایل پیکربندی محلی روی
+        این سیستم ذخیره می‌شود و فقط برای تماس با {PROVIDER_LABELS[form.provider] || 'provider شما'}{' '}
+        از سرور خودتان استفاده می‌شود. هرگز به سرویس دیگری ارسال یا در آنجا ذخیره نمی‌شود.
       </div>
 
       <label className="checkbox-row" style={{ marginTop: 14 }}>
@@ -131,12 +131,12 @@ export default function SettingsScreen({ notify, onSaved, onContinue }) {
           onChange={(e) => setForm((f) => ({ ...f, mock_mode: e.target.checked }))}
         />
         <span>
-          <strong>Mock mode</strong> — test the whole flow with zero API calls
+          <strong>حالت آزمایشی</strong> — کل مسیر را بدون هیچ تماس API تست کنید
         </span>
       </label>
       <p className="small muted" style={{ marginTop: 2 }}>
-        Runs the full pipeline against an in-process fake. No key needed, nothing is charged —
-        but the output is test data, clearly marked.
+        کل مسیر را با یک شبیه‌ساز داخلی اجرا می‌کند. بدون نیاز به کلید، بدون هیچ هزینه‌ای —
+        اما خروجی داده‌ی آزمایشی است و واضح علامت‌گذاری می‌شود.
       </p>
 
       <label>Provider</label>
@@ -160,10 +160,10 @@ export default function SettingsScreen({ notify, onSaved, onContinue }) {
         </>
       )}
 
-      <label>Model</label>
+      <label>مدل</label>
       {modelList.length ? (
         <select value={form.model} onChange={set('model')}>
-          {!form.model && <option value="">choose a model…</option>}
+          {!form.model && <option value="">انتخاب مدل…</option>}
           {modelList.map((m) => (
             <option key={m.id} value={m.id}>
               {m.label}
@@ -175,17 +175,17 @@ export default function SettingsScreen({ notify, onSaved, onContinue }) {
           type="text"
           value={form.model}
           onChange={set('model')}
-          placeholder="model id, e.g. llama3"
+          placeholder="شناسه‌ی مدل، مثلاً llama3"
         />
       )}
 
-      <label>API key</label>
+      <label>کلید API</label>
       <div className="key-row">
         <input
           type={showKey ? 'text' : 'password'}
           value={form.api_key}
           onChange={set('api_key')}
-          placeholder={present ? `${masked} — leave blank to keep` : 'sk-…'}
+          placeholder={present ? `${masked} — خالی بگذارید تا حفظ شود` : 'sk-…'}
           autoComplete="off"
         />
         <button
@@ -194,18 +194,18 @@ export default function SettingsScreen({ notify, onSaved, onContinue }) {
           onClick={() => setShowKey((v) => !v)}
           disabled={!form.api_key}
         >
-          {showKey ? 'hide' : 'show'}
+          {showKey ? 'پنهان' : 'نمایش'}
         </button>
       </div>
       {present && (
         <button className="btn btn-ghost small" onClick={clearKey}>
-          Remove saved key
+          حذف کلید ذخیره‌شده
         </button>
       )}
 
       <div className="form-row">
         <div>
-          <label>Price per 1M input tokens (USD)</label>
+          <label>قیمت هر ۱ میلیون توکن ورودی (دلار)</label>
           <input
             type="number"
             step="0.01"
@@ -216,7 +216,7 @@ export default function SettingsScreen({ notify, onSaved, onContinue }) {
           />
         </div>
         <div>
-          <label>Price per 1M output tokens (USD)</label>
+          <label>قیمت هر ۱ میلیون توکن خروجی (دلار)</label>
           <input
             type="number"
             step="0.01"
@@ -228,19 +228,19 @@ export default function SettingsScreen({ notify, onSaved, onContinue }) {
         </div>
       </div>
       <p className="small muted">
-        Used for the dashboard cost estimate. Leave blank to use the built-in table for the
-        selected model.
+        برای برآورد هزینه در داشبورد استفاده می‌شود. خالی بگذارید تا جدول داخلیِ
+        مدل انتخاب‌شده به‌کار رود.
       </p>
 
       <div className="form-actions">
         <button className="btn btn-primary" onClick={() => save(true)} disabled={saving}>
-          {saving ? 'Saving…' : 'Save and continue'}
+          {saving ? 'در حال ذخیره…' : 'ذخیره و ادامه'}
         </button>
         <button className="btn btn-secondary" onClick={() => save(false)} disabled={saving}>
-          Save only
+          فقط ذخیره
         </button>
         <button className="btn btn-ghost" onClick={test} disabled={testing}>
-          {testing ? 'testing…' : 'Test connection'}
+          {testing ? 'در حال تست…' : 'تست اتصال'}
         </button>
         {testResult && (
           <span className={`small ${testResult.ok ? '' : 'muted'}`}>{testResult.text}</span>

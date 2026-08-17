@@ -76,7 +76,7 @@ export default function App() {
         setJobId(null);
         setChecking(false);
         setScreen('upload');
-        setMsg({ ok: false, text: `Job ${jobId} no longer exists on this machine.` });
+        setMsg({ ok: false, text: `job ${jobId} دیگر روی این سیستم وجود ندارد.` });
       });
     return () => {
       cancelled = true;
@@ -102,7 +102,7 @@ export default function App() {
       setPendingFile(null);
       setScreen('dashboard');
       notify(
-        `job ${body.job_id} ready — round-trip ${body.report.pass ? 'verified' : 'FAILED'}`
+        `job ${body.job_id} آماده است — بررسی round-trip ${body.report.pass ? 'موفق' : 'ناموفق'}`
       );
     } catch (e) {
       notify(e.message, false);
@@ -114,7 +114,7 @@ export default function App() {
     if (settings?.provider_configured) {
       commitUpload();
     } else {
-      notify('add your provider key, then save and continue');
+      notify('کلید provider را اضافه کنید، سپس ذخیره و ادامه دهید');
       setScreen('settings');
     }
   };
@@ -146,17 +146,17 @@ export default function App() {
   return (
     <div className="container">
       <div className="topbar">
-        <h1>EPUB AI translator</h1>
+        <h1>مترجم هوشمند EPUB</h1>
         <nav className="nav" aria-label="pages">
-          {navTab('upload', 'New book', screen === 'upload', () => go('upload'))}
+          {navTab('upload', 'کتاب جدید', screen === 'upload', () => go('upload'))}
           {navTab(
             'dashboard',
-            'Dashboard',
+            'داشبورد',
             screen === 'dashboard',
             () => jobId && go('dashboard'),
             !jobId
           )}
-          {navTab('settings', 'Settings', screen === 'settings', () => go('settings'))}
+          {navTab('settings', 'تنظیمات', screen === 'settings', () => go('settings'))}
         </nav>
         <span className="spacer" />
         {jobId && <span className="job-chip">job {jobId}</span>}
@@ -165,12 +165,12 @@ export default function App() {
       {msg && (
         <div className={`message ${msg.ok ? 'ok' : 'err'}`}>
           <span>{msg.text}</span>
-          <button onClick={dismiss}>dismiss</button>
+          <button onClick={dismiss}>بستن</button>
         </div>
       )}
 
       {checking ? (
-        <div className="loading">restoring your job…</div>
+        <div className="loading">در حال بازیابی job شما…</div>
       ) : screen === 'dashboard' && !jobId ? (
         <UploadScreen notify={notify} onContinue={handleContinue} />
       ) : screen === 'upload' ? (

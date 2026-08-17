@@ -61,13 +61,13 @@ def _api_key() -> str:
     cfg = settings_mod.load_settings()
     key = cfg.get("api_key") or os.environ.get("DEEPSEEK_API_KEY")
     if not key:
-        raise HTTPException(500, "No AI provider key configured — add one in Settings")
+        raise HTTPException(500, "کلید provider تنظیم نشده — در بخش تنظیمات یک کلید اضافه کنید")
     return key
 
 
 def _require_job(job_id: str) -> None:
     if not jobs.job_paths(job_id)["report"].exists():
-        raise HTTPException(404, "job not found")
+        raise HTTPException(404, "job پیدا نشد")
 
 
 # --- health / upload / download ------------------------------------------------
@@ -84,7 +84,7 @@ def sample_epub():
     of cost-free testing in the UI, no upload needed."""
     path = Path(__file__).resolve().parent.parent / "assets" / "sample-book.epub"
     if not path.exists():
-        raise HTTPException(404, "sample book not bundled")
+        raise HTTPException(404, "کتاب نمونه همراه برنامه نیست")
     return FileResponse(path, media_type="application/epub+zip", filename="sample-book.epub")
 
 
@@ -101,7 +101,7 @@ def put_settings(payload: dict = Body(...)):
     try:
         settings_mod.save_settings(payload)
     except Exception as e:
-        raise HTTPException(400, f"invalid settings: {e}") from e
+        raise HTTPException(400, f"تنظیمات نامعتبر: {e}") from e
     return settings_mod.public_settings()
 
 
@@ -114,28 +114,28 @@ def test_settings(payload: dict = Body(...)):
     api_key = str(payload.get("api_key") or "").strip() or cfg.get("api_key", "")
     model = str(payload.get("model") or "").strip() or cfg.get("model", "")
     if not base_url or not api_key:
-        raise HTTPException(400, "base_url and api_key are required (or save settings first)")
+        raise HTTPException(400, "base_url و api_key الزامی هستند (یا اول تنظیمات را ذخیره کنید)")
     try:
         return settings_mod.test_connection(base_url, api_key, model=model)
     except Exception as e:
-        raise HTTPException(502, f"connection failed: {e}") from e
+        raise HTTPException(502, f"اتصال ناموفق بود: {e}") from e
 
 
 @app.post("/upload")
 async def upload(file: UploadFile = File(...)):
     name = (file.filename or "").lower()
     if not name.endswith(".epub"):
-        raise HTTPException(400, "only .epub files are accepted")
+        raise HTTPException(400, "فقط فایل‌های .epub پذیرفته می‌شوند")
     data = await file.read()
     if not data.startswith(ZIP_MAGIC):
-        raise HTTPException(400, "file is not a zip/EPUB container")
+        raise HTTPException(400, "فایل، ZIP/EPUB معتبر نیست")
 
     job_id = jobs.create_job()
     jobs.job_paths(job_id)["input"].write_bytes(data)
     try:
         report = jobs.run_pipeline(job_id)
     except Exception as e:
-        raise HTTPException(422, f"could not process EPUB: {e}") from e
+        raise HTTPException(422, f"پردازش EPUB ممکن نشد: {e}") from e
 
     return {"job_id": job_id, "status": "ready", "report": _summary(report)}
 
@@ -149,10 +149,10 @@ async def preview(file: UploadFile = File(...)):
 
     name = (file.filename or "").lower()
     if not name.endswith(".epub"):
-        raise HTTPException(400, "only .epub files are accepted")
+        raise HTTPException(400, "فقط فایل‌های .epub پذیرفته می‌شوند")
     data = await file.read()
     if not data.startswith(ZIP_MAGIC):
-        raise HTTPException(400, "file is not a zip/EPUB container")
+        raise HTTPException(400, "فایل، ZIP/EPUB معتبر نیست")
 
     tmp = Path(tempfile.mkdtemp(prefix="epub-preview-"))
     try:
@@ -177,7 +177,7 @@ async def preview(file: UploadFile = File(...)):
             "chapters": chapters,
         }
     except Exception as e:
-        raise HTTPException(422, f"could not parse EPUB: {e}") from e
+        raise HTTPException(422, f"خواندن EPUB ممکن نشد: {e}") from e
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -248,7 +248,7 @@ def download(job_id: str):
         else paths["rebuilt"]
     )
     if not target.exists():
-        raise HTTPException(404, "job not found or not ready")
+        raise HTTPException(404, "job پیدا نشد یا هنوز آماده نیست")
     return FileResponse(target, media_type="application/epub+zip", filename=f"{job_id}.epub")
 
 
@@ -261,7 +261,7 @@ def run_qa(job_id: str, background_tasks: BackgroundTasks):
     paths = jobs.job_paths(job_id)
     qa_progress = _read_json(paths["qa_progress"]) or {}
     if qa_progress.get("running"):
-        raise HTTPException(409, "a QA pass is already running for this job")
+        raise HTTPException(409, "یک مرحله‌ی QA در حال اجرا برای این job است")
     api_key = _api_key()
     background_tasks.add_task(qa.run_qa, job_id, api_key)
     return {"job_id": job_id, "status": "started"}
@@ -283,14 +283,14 @@ def put_qa_fixes(job_id: str, payload: dict = Body(...)):
     _require_job(job_id)
     fixes = payload.get("fixes") or {}
     if not isinstance(fixes, dict):
-        raise HTTPException(400, "fixes must be a {node_id: corrected_text} object")
+        raise HTTPException(400, "fixes باید به شکل {node_id: corrected_text} باشد")
     known = set()
     for tpath in jobs.job_paths(job_id)["chapters"].glob("*.translated.json"):
         data = json.loads(tpath.read_text(encoding="utf-8"))
         known.update(n["id"] for n in data["text_nodes"])
     unknown = [k for k in fixes if k not in known]
     if unknown:
-        raise HTTPException(400, f"unknown node ids: {', '.join(sorted(unknown)[:20])}")
+        raise HTTPException(400, f"شناسه‌های node ناشناخته: {', '.join(sorted(unknown)[:20])}")
     jobs.job_paths(job_id)["qa_corrections"].write_text(
         json.dumps(fixes, ensure_ascii=False, indent=1), encoding="utf-8"
     )
@@ -312,7 +312,7 @@ def finalize_job(job_id: str, payload: dict = Body(default={})):
     except ValueError as e:
         raise HTTPException(422, str(e)) from e
     except Exception as e:
-        raise HTTPException(502, f"finalize failed: {e}") from e
+        raise HTTPException(502, f"نهایی‌سازی ناموفق بود: {e}") from e
     return {"job_id": job_id, **result}
 
 
@@ -324,16 +324,16 @@ def extract_glossary(job_id: str):
     _require_job(job_id)
     chapter_id = jobs.first_content_chapter_id(job_id)
     if not chapter_id:
-        raise HTTPException(422, "no chapter with extractable text content")
+        raise HTTPException(422, "فصلی با متن قابل استخراج پیدا نشد")
     api_key = _api_key()
     text = jobs.chapter_text_for(job_id, chapter_id)
     prompt = glossary.GLOSSARY_PROMPT_PATH.read_text(encoding="utf-8")
     try:
         terms = glossary.extract_glossary(text, prompt, api_key=api_key)
     except glossary.GlossaryError as e:
-        raise HTTPException(502, f"glossary extraction failed: {e}") from e
+        raise HTTPException(502, f"استخراج Glossary ناموفق بود: {e}") from e
     except Exception as e:
-        raise HTTPException(502, f"glossary extraction failed: {e}") from e
+        raise HTTPException(502, f"استخراج Glossary ناموفق بود: {e}") from e
 
     paths = jobs.job_paths(job_id)
     paths["glossary_proposed"].write_text(
@@ -348,7 +348,7 @@ def update_glossary(job_id: str, payload: dict = Body(...)):
     terms = payload.get("glossary")
     ok, errors = glossary.validate_glossary(terms)
     if not ok:
-        raise HTTPException(400, "invalid glossary: " + "; ".join(errors[:5]))
+        raise HTTPException(400, "Glossary نامعتبر: " + "; ".join(errors[:5]))
     paths = jobs.job_paths(job_id)
     paths["glossary_approved"].write_text(
         json.dumps(terms, ensure_ascii=False, indent=1), encoding="utf-8"
@@ -371,12 +371,12 @@ def _translated_chapters(job_id: str) -> list:
 @app.post("/translate/{job_id}/chapter/{chapter_id}")
 def translate_chapter(job_id: str, chapter_id: str):
     if not CHAPTER_ID_RE.fullmatch(chapter_id):
-        raise HTTPException(400, "chapter id must look like ch01")
+        raise HTTPException(400, "شناسه‌ی فصل باید شبیه ch01 باشد")
     _require_job(job_id)
     paths = jobs.job_paths(job_id)
     src = paths["chapters"] / f"{chapter_id}.json"
     if not src.exists():
-        raise HTTPException(404, f"chapter {chapter_id} not found (upload the epub first)")
+        raise HTTPException(404, f"فصل {chapter_id} پیدا نشد (اول کتاب را آپلود کنید)")
     api_key = _api_key()
 
     tracker = ProgressTracker(paths["progress"])
@@ -390,13 +390,13 @@ def translate_chapter(job_id: str, chapter_id: str):
         reason = str(e)
         if len(reason) > 200:
             reason = reason[:197] + "..."
-        detail = f"translation validation failed ({reason})"
+        detail = f"ترجمه نامعتبر است ({reason})"
         if e.failing_ids:
-            detail += f" for nodes: {', '.join(sorted(e.failing_ids)[:20])}"
+            detail += f" برای nodeهای: {', '.join(sorted(e.failing_ids)[:20])}"
         raise HTTPException(502, detail) from e
     except Exception as e:
         tracker.set(chapter_id, FAILED)
-        raise HTTPException(502, f"translation failed: {e}") from e
+        raise HTTPException(502, f"ترجمه ناموفق بود: {e}") from e
     tracker.set(chapter_id, DONE)
 
     paths["translated_report"].write_text(
@@ -410,10 +410,10 @@ def translate_all(job_id: str, background_tasks: BackgroundTasks):
     _require_job(job_id)
     paths = jobs.job_paths(job_id)
     if not paths["glossary_approved"].exists():
-        raise HTTPException(400, "approve a glossary first (PATCH /glossary/{job_id})")
+        raise HTTPException(400, "اول Glossary را تأیید کنید")
     tracker = ProgressTracker(paths["progress"])
     if tracker.get().get("running"):
-        raise HTTPException(409, "a full-book translation is already running")
+        raise HTTPException(409, "ترجمه‌ی کل کتاب در حال اجراست")
     api_key = _api_key()
     background_tasks.add_task(jobs.run_full_book, job_id, api_key)
     return {"job_id": job_id, "status": "started"}

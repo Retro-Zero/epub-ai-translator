@@ -25,10 +25,10 @@ export default function ProgressBanner({ chapters, running, qa }) {
         <div className="progress-main">
           <div className="progress-line">
             <strong>
-              {qa.current ? `Running QA — ${qa.current}` : 'Running QA…'}
+              {qa.current ? `در حال اجرای QA — ${qa.current}` : 'در حال اجرای QA…'}
             </strong>
             <span className="muted small">
-              {qaDone} of {qaTotal} chapters checked · {qaPct}%
+              {qaDone} از {qaTotal} فصل بررسی شد · {qaPct}%
             </span>
           </div>
           <div className="progress-track">
@@ -43,10 +43,10 @@ export default function ProgressBanner({ chapters, running, qa }) {
     if (total > 0 && done + skipped === total) {
       return (
         <div className="progress-banner banner-done">
-          <span className="badge badge-done">complete</span>
+          <span className="badge badge-done">کامل</span>
           <span>
-            All {total} chapters translated{failed > 0 ? ` — ${failed} failed` : ''}. Run a QA
-            pass, then finalize.
+            هر {total} فصل ترجمه شد{failed > 0 ? ` — ${failed} ناموفق` : ''}. یک مرحله‌ی QA
+            اجرا کنید، بعد نهایی‌سازی.
           </span>
         </div>
       );
@@ -54,10 +54,10 @@ export default function ProgressBanner({ chapters, running, qa }) {
     if (failed > 0) {
       return (
         <div className="progress-banner banner-warn">
-          <span className="badge badge-failed">{failed} failed</span>
+          <span className="badge badge-failed">{failed} ناموفق</span>
           <span>
-            Translation finished with {failed} failed chapter{failed === 1 ? '' : 's'} — retry
-            them inline in the list below.
+            ترجمه با {failed} فصل ناموفق تمام شد — آن‌ها را
+            در فهرست پایین دوباره امتحان کنید.
           </span>
         </div>
       );
@@ -70,9 +70,9 @@ export default function ProgressBanner({ chapters, running, qa }) {
       <span className="spin" />
       <div className="progress-main">
         <div className="progress-line">
-          <strong>{current ? `Translating ${current.id}` : 'Translating…'}</strong>
+          <strong>{current ? `در حال ترجمه‌ی ${current.id}` : 'در حال ترجمه…'}</strong>
           <span className="muted small">
-            {done} done · {failed} failed · {skipped} skipped · {pct}%
+            {done} انجام شد · {failed} ناموفق · {skipped} رد شد · {pct}%
           </span>
         </div>
         <div className="progress-track">

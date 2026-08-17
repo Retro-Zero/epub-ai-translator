@@ -1,9 +1,9 @@
 const LABELS = {
-  pending: 'pending',
-  in_progress: 'in progress',
-  done: 'done',
-  failed: 'failed',
-  skipped: 'skipped',
+  pending: 'در انتظار',
+  in_progress: 'در حال اجرا',
+  done: 'انجام شد',
+  failed: 'ناموفق',
+  skipped: 'رد شد',
 };
 
 export default function StatusBadge({ status }) {

@@ -6,7 +6,7 @@ import { api } from '../api';
  * Drop zone or file picker (.epub only). Preview parses the file on the
  * server WITHOUT creating a job and shows filename / size / chapter count /
  * title before anything is committed. No AI calls on this screen.
- * Continue routes to settings when no provider is configured yet, else
+ * ادامه routes to settings when no provider is configured yet, else
  * commits the upload and goes to the dashboard.
  */
 export default function UploadScreen({ notify, providerConfigured, onContinue }) {
@@ -20,7 +20,7 @@ export default function UploadScreen({ notify, providerConfigured, onContinue })
   const setFile = (f) => {
     if (!f) return;
     if (!f.name.toLowerCase().endsWith('.epub')) {
-      notify('only .epub files are accepted', false);
+      notify('فقط فایل‌های .epub پذیرفته می‌شوند', false);
       return;
     }
     setPreview(null);
@@ -38,7 +38,7 @@ export default function UploadScreen({ notify, providerConfigured, onContinue })
       fd.append('file', f);
       const body = await api('/preview', { method: 'POST', body: fd });
       setPreview({ ...body, filename: f.name });
-      notify(`preview ready — ${body.chapter_count} chapters, no job created yet`);
+      notify(`پیش‌نمایش آماده است — ${body.chapter_count} فصل، هنوز job ساخته نشده`);
     } catch (e) {
       setPreview(null);
       notify(e.message, false);
@@ -58,7 +58,7 @@ export default function UploadScreen({ notify, providerConfigured, onContinue })
     setBusy(true);
     try {
       const res = await fetch('/sample');
-      if (!res.ok) throw new Error('sample book unavailable');
+      if (!res.ok) throw new Error('کتاب نمونه در دسترس نیست');
       const blob = await res.blob();
       setFile(new File([blob], 'sample-book.epub', { type: 'application/epub+zip' }));
     } catch (e) {
@@ -75,9 +75,9 @@ export default function UploadScreen({ notify, providerConfigured, onContinue })
 
   return (
     <div className="card">
-      <h2>Upload a book</h2>
+      <h2>آپلود کتاب</h2>
       <p className="card-sub">
-        English epub in, Persian epub out — processed on this machine only.
+        کتاب انگلیسی وارد کنید، EPUB فارسی تحویل بگیرید — همه‌چیز فقط روی همین دستگاه پردازش می‌شود.
       </p>
 
       <div
@@ -100,13 +100,13 @@ export default function UploadScreen({ notify, providerConfigured, onContinue })
             if (f) setFile(f);
           }}
         />
-        <p className="dropzone-main">{busy ? 'Reading the epub…' : 'Drop an epub here or click to choose'}</p>
-        <p className="muted small">.epub only — nothing is created until you continue</p>
+        <p className="dropzone-main">{busy ? 'در حال خواندن EPUB…' : 'فایل epub را اینجا رها کنید یا کلیک کنید'}</p>
+        <p className="muted small">فقط .epub — تا وقتی ادامه ندهید چیزی ساخته نمی‌شود</p>
       </div>
 
       <div className="form-actions">
         <button className="btn btn-ghost" onClick={loadSample} disabled={busy}>
-          or try the sample book
+          یا کتاب نمونه را امتحان کنید
         </button>
       </div>
 
@@ -115,24 +115,24 @@ export default function UploadScreen({ notify, providerConfigured, onContinue })
           <table>
             <tbody>
               <tr>
-                <td className="muted">File</td>
+                <td className="muted">فایل</td>
                 <td>{preview.filename}</td>
               </tr>
               <tr>
-                <td className="muted">Size</td>
+                <td className="muted">حجم</td>
                 <td>{fmtSize(preview.size)}</td>
               </tr>
               <tr>
-                <td className="muted">Title</td>
+                <td className="muted">عنوان</td>
                 <td>{preview.title || '—'}</td>
               </tr>
               <tr>
-                <td className="muted">Chapters</td>
+                <td className="muted">فصل‌ها</td>
                 <td>
                   {preview.chapter_count}
                   <span className="muted small">
                     {' '}
-                    (≈ {preview.chapters.reduce((a, c) => a + c.text_nodes, 0)} text nodes)
+                    (حدود {preview.chapters.reduce((a, c) => a + c.text_nodes, 0)} گره متنی)
                   </span>
                 </td>
               </tr>
@@ -144,10 +144,10 @@ export default function UploadScreen({ notify, providerConfigured, onContinue })
               onClick={() => onContinue(file)}
               disabled={busy || !file}
             >
-              Continue
+              ادامه
             </button>
             <button className="btn btn-ghost" onClick={() => setPreview(null)}>
-              Choose a different file
+              انتخاب فایل دیگر
             </button>
           </div>
         </div>

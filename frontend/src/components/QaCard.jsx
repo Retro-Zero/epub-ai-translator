@@ -66,7 +66,7 @@ export default function QaCard({ jobId, notify, runSignal, onRefreshStatus, qaRu
           }
         }
         setFixes(map);
-        notify(`QA done — ${body.report.total_issues} issue(s) flagged`);
+        notify(`QA تمام شد — ${body.report.total_issues} مشکل پیدا شد`);
       }
     }, 2000);
     return () => clearInterval(t);
@@ -84,7 +84,7 @@ export default function QaCard({ jobId, notify, runSignal, onRefreshStatus, qaRu
     try {
       await post(`/qa/${jobId}`); // 202 — runs in background
       pendingRun.current = true;
-      notify('QA started — progress in the banner above');
+      notify('QA شروع شد — پیشرفت در نوار بالا');
     } catch (e) {
       setBusy(false);
       notify(e.message, false);
@@ -92,9 +92,17 @@ export default function QaCard({ jobId, notify, runSignal, onRefreshStatus, qaRu
   };
 
   const applyAndFinalize = async () => {
+    // Build the payload from the REPORT's issues (source of truth), so it
+    // works even after a reload when the local `fixes` draft map is empty:
+    // the per-issue text falls back to the suggested fix, apply defaults on.
     const out = {};
-    for (const [id, f] of Object.entries(fixes)) {
-      if (f.apply && f.text.trim()) out[id] = f.text.trim();
+    for (const [ch, info] of Object.entries(report?.chapters || {})) {
+      for (const it of info.issues || []) {
+        const draft = fixes[it.id];
+        const apply = draft?.apply ?? true;
+        const text = (draft?.text ?? it.suggested_fix ?? '').trim();
+        if (apply && text) out[it.id] = text;
+      }
     }
     setBusy(true);
     try {
@@ -109,7 +117,7 @@ export default function QaCard({ jobId, notify, runSignal, onRefreshStatus, qaRu
       });
       setFinalized(true);
       notify(
-        `finalized — ${fin.language}, title: ${fin.title || '(kept)'}, font: ${fin.font}. Ready to download.`
+        `نهایی شد — ${fin.language}، عنوان: ${fin.title || '(بدون تغییر)'}، فونت: ${fin.font}. آماده‌ی دانلود.`
       );
       onRefreshStatus();
     } catch (e) {
@@ -131,16 +139,16 @@ export default function QaCard({ jobId, notify, runSignal, onRefreshStatus, qaRu
 
   return (
     <div className="card">
-      <h2>Quality review</h2>
+      <h2>بازبینی کیفیت</h2>
       <p className="card-sub">
-        A consistency check on a sample of translated nodes per chapter — glossary use, meaning,
-        fluency. Run it from the action bar above.
+        بررسی سازگاری روی نمونه‌ای از گره‌های ترجمه‌شده‌ی هر فصل — استفاده از Glossary، انتقال معنا،
+        روان بودن. از نوار بالا اجرایش کنید.
       </p>
 
       {qaRunning && (
         <div className="progress-banner banner-running" style={{ marginBottom: 14 }}>
           <span className="spin" />
-          <span>QA pass running in the background — this page keeps working.</span>
+          <span>مرحله‌ی QA در پس‌زمینه در حال اجراست — این صفحه به کار خودش ادامه می‌دهد.</span>
         </div>
       )}
 
@@ -148,33 +156,33 @@ export default function QaCard({ jobId, notify, runSignal, onRefreshStatus, qaRu
         <div className="card-head" style={{ marginBottom: 10 }}>
           <div>
             <p className="qa-summary" style={{ margin: 0 }}>
-              <span className="badge badge-done">{savedCount} fix(es) applied</span>{' '}
-              <span className="muted">· included in final.epub</span>
+              <span className="badge badge-done">{savedCount} اصلاح اعمال شد</span>{' '}
+              <span className="muted">· در فایل نهایی EPUB اعمال شده</span>
             </p>
           </div>
           <button className="btn btn-ghost" onClick={() => setAppliedExpanded((v) => !v)}>
-            {appliedExpanded ? 'Collapse' : 'View applied fixes'}
+            {appliedExpanded ? 'بستن' : 'مشاهده‌ی اصلاحات اعمال‌شده'}
           </button>
         </div>
       )}
 
       {report && report.errors?.length > 0 && !applied && (
-        <p className="small muted">QA errors on {report.errors.length} chapter(s) — report is partial.</p>
+        <p className="small muted">خطای QA در {report.errors.length} فصل — گزارش ناقص است.</p>
       )}
 
       {showIssues && (!applied || appliedExpanded) && (
         <div className="qa-issues-list">
           {totalIssues === 0 && (
             <p className="qa-summary">
-              <span className="badge badge-done">clean</span> no issues flagged in the sample.
+              <span className="badge badge-done">تمیز</span> هیچ مشکلی در نمونه پیدا نشد.
             </p>
           )}
 
           {totalIssues > 0 && !applied && (
             <p className="qa-summary">
               <strong>
-                {totalIssues} issue{totalIssues === 1 ? '' : 's'} found across {chapterIds.length}{' '}
-                chapter{chapterIds.length === 1 ? '' : 's'}
+                {totalIssues} مشکل در {chapterIds.length}{' '}
+                فصل پیدا شد
               </strong>
             </p>
           )}
@@ -191,11 +199,11 @@ export default function QaCard({ jobId, notify, runSignal, onRefreshStatus, qaRu
                   </div>
                   <div className="qa-snippets">
                     <div className="qa-snippet">
-                      <span className="qa-snippet-label">original</span>
+                      <span className="qa-snippet-label">متن اصلی</span>
                       <span className="muted small">{it.original}</span>
                     </div>
                     <div className="qa-snippet">
-                      <span className="qa-snippet-label">current</span>
+                      <span className="qa-snippet-label">ترجمه‌ی فعلی</span>
                       <span dir="rtl" className="small">
                         {it.translation}
                       </span>
@@ -203,7 +211,7 @@ export default function QaCard({ jobId, notify, runSignal, onRefreshStatus, qaRu
                   </div>
                   {applied ? (
                     <p className="small" style={{ color: 'var(--green)', margin: '6px 0 0' }}>
-                      ✓ applied — {fixes[it.id]?.text || 'kept original'}
+                      ✓ اعمال شد — {fixes[it.id]?.text || 'متن اصلی حفظ شد'}
                     </p>
                   ) : (
                     <div className="qa-fix-row">
@@ -212,7 +220,7 @@ export default function QaCard({ jobId, notify, runSignal, onRefreshStatus, qaRu
                         dir="rtl"
                         value={fixes[it.id]?.text ?? it.suggested_fix ?? ''}
                         onChange={(e) => setFix(it.id, { text: e.target.value })}
-                        placeholder="suggested fix"
+                        placeholder="پیشنهاد اصلاح"
                       />
                       <label className="checkbox-row" style={{ margin: 0 }}>
                         <input
@@ -220,7 +228,7 @@ export default function QaCard({ jobId, notify, runSignal, onRefreshStatus, qaRu
                           checked={fixes[it.id]?.apply ?? true}
                           onChange={(e) => setFix(it.id, { apply: e.target.checked })}
                         />
-                        {fixes[it.id]?.apply ?? true ? 'apply fix' : 'keep original'}
+                        {fixes[it.id]?.apply ?? true ? 'اعمال اصلاح' : 'حفظ متن اصلی'}
                       </label>
                     </div>
                   )}
@@ -234,17 +242,17 @@ export default function QaCard({ jobId, notify, runSignal, onRefreshStatus, qaRu
       {!applied && totalIssues > 0 && (
         <div className="form-actions">
           <button className="btn btn-primary" onClick={applyAndFinalize} disabled={busy}>
-            {busy ? 'Working…' : 'Apply fixes and finalize'}
+            {busy ? 'در حال انجام…' : 'اعمال اصلاحات و نهایی‌سازی'}
           </button>
           <details className="finalize-opts">
-            <summary className="small muted">finalize options</summary>
+            <summary className="small muted">گزینه‌های نهایی‌سازی</summary>
             <label className="checkbox-row">
               <input
                 type="checkbox"
                 checked={opts.title}
                 onChange={(e) => setOpts((o) => ({ ...o, title: e.target.checked }))}
               />
-              Translate the title
+              ترجمه‌ی عنوان
             </label>
             <label className="checkbox-row">
               <input
@@ -252,7 +260,7 @@ export default function QaCard({ jobId, notify, runSignal, onRefreshStatus, qaRu
                 checked={opts.author}
                 onChange={(e) => setOpts((o) => ({ ...o, author: e.target.checked }))}
               />
-              Translate the author name
+              ترجمه‌ی نام نویسنده
             </label>
             <label className="checkbox-row">
               <input
@@ -260,7 +268,7 @@ export default function QaCard({ jobId, notify, runSignal, onRefreshStatus, qaRu
                 checked={opts.publisher}
                 onChange={(e) => setOpts((o) => ({ ...o, publisher: e.target.checked }))}
               />
-              Translate the publisher name
+              ترجمه‌ی نام ناشر
             </label>
           </details>
         </div>
@@ -269,16 +277,15 @@ export default function QaCard({ jobId, notify, runSignal, onRefreshStatus, qaRu
       {(finalized || finalExists) && (
         <div className="download-box">
           <a className="btn btn-primary" href={`/download/${jobId}`} download>
-            Download epub
+            دانلود EPUB
           </a>
-          <span className="small muted">final Persian epub — RTL, font, translated TOC</span>
+          <span className="small muted">EPUB فارسی نهایی — راست‌به‌چپ، فونت، فهرست ترجمه‌شده</span>
         </div>
       )}
 
       {!report && !qaRunning && (
         <p className="muted small">
-          No QA report yet. Once at least one chapter is translated, run a QA pass from the action
-          bar.
+          هنوز گزارش QA وجود ندارد. بعد از ترجمه‌ی حداقل یک فصل، از نوار بالا یک مرحله‌ی QA اجرا کنید.
         </p>
       )}
     </div>
