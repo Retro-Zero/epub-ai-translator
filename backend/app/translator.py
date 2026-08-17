@@ -28,6 +28,7 @@ from pathlib import Path
 
 from .textnodes import ChapterData, TextNode
 from . import settings as settings_mod
+from .zwnj import normalize_half_spaces
 
 DEFAULT_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-v4-flash")
 DEFAULT_BASE_URL = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
@@ -290,6 +291,14 @@ async def _translate_async(client, model: str, prompt: str, chapter: ChapterData
     for n in chapter.text_nodes:
         if n.id in kept_original_ids and n.id not in translated_by_id:
             translated_by_id[n.id] = n.text
+
+    # restore Persian half-spaces the model dropped (bug #5) — applied to
+    # model output only, once, at this single choke point so translated
+    # files, QA, and finalize all see the corrected text. English source
+    # text (kept-original nodes) passes through untouched.
+    translated_by_id = {
+        nid: normalize_half_spaces(text) for nid, text in translated_by_id.items()
+    }
 
     new_nodes = [
         TextNode(id=n.id, path=n.path, text=translated_by_id[n.id]) for n in chapter.text_nodes

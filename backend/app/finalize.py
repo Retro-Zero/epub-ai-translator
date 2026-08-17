@@ -16,6 +16,7 @@ from pathlib import Path
 
 from . import jobs, translator
 from .textnodes import ChapterData, TextNode, rebuild_chapter
+from .zwnj import normalize_half_spaces
 
 TITLES_PROMPT_PATH = Path(__file__).with_name("titles_prompt.txt")
 ASSETS = Path(__file__).resolve().parent.parent / "assets" / "fonts"
@@ -35,8 +36,13 @@ def _local(tag: str) -> str:
 def apply_corrections(chapter_data: ChapterData, corrections: dict) -> ChapterData:
     if not corrections:
         return chapter_data
+    # corrections are model output too — restore dropped half-spaces (bug #5)
     nodes = [
-        TextNode(id=n.id, path=n.path, text=corrections.get(n.id, n.text))
+        TextNode(
+            id=n.id,
+            path=n.path,
+            text=normalize_half_spaces(corrections.get(n.id, n.text)),
+        )
         for n in chapter_data.text_nodes
     ]
     return ChapterData(chapter_id=chapter_data.chapter_id, href=chapter_data.href, text_nodes=nodes)
