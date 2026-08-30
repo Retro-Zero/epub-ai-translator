@@ -143,7 +143,10 @@ def rebuild_chapter(xhtml_bytes: bytes, data: ChapterData, translate=None, rtl: 
 
 
 def _serialize(soup: BeautifulSoup, original_bytes: bytes) -> bytes:
-    return _xml_decl(original_bytes) + soup.encode("utf-8")
+    xml_decl = _xml_decl(original_bytes)
+    encoded = soup.encode("utf-8")
+    encoded = _XML_DECL_RE.sub(b"", encoded)
+    return xml_decl + encoded
 
 
 def _xml_decl(original_bytes: bytes) -> bytes:
